@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" >
+
+  <title>Flask Template</title>
+
+  </head>
+
+  <body>
+    {% include 'navbar_private.html' %}
+
+    <main>  
+
+      <div class="dashboard-page">
+
+        <section class="dashboard-hero card">
+          <div class="hero-text">
+            <h1>Ready to reserve & serve with BookingBot? 🎾</h1>
+            <p>BookingBot will check your calendar and book courts for you at 8am sharp.</p>
+            {% with messages = get_flashed_messages(with_categories=True, category_filter=["autobook"]) %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="form-message success" style="margin-top: 10px; font-size: 0.9rem;">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+          </div>
+
+          <form method="POST" action="{{ url_for('toggle_autobook') }}" class="toggle-form">
+            <label class="switch">
+              <input type="checkbox" name="autobook_enabled" {% if autobook_enabled %}checked{% endif %} onchange="this.form.submit()">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">
+              {% if autobook_enabled %}ON{% else %}OFF{% endif %}
+            </span>
+          </form>
+        </section>
+
+        <section class="setup-section">
+          <h2>Setup steps</h2>
+          <div class="card-grid">
+
+            <div class="card setup-card">
+              <div class="card-header">
+                <h3>1. Add your club credentials</h3>
+                <span class="status-badge {% if club_profile_connected %}complete{% else %}incomplete{% endif %}">
+                  {% if club_profile_connected %}Connected{% else %}Not connected{% endif %}
+                </span>
+              </div>
+
+              <p>Enter your club credentials. They will be encrypted on the server before being stored in 
+                a secure database. 
+              </p>
+
+              <form method="POST" action="{{ url_for('save_tennis_credentials') }}" class="stack-form">
+                <label for="tennis_username">Club username</label>
+                <input type="text" id="tennis_username" name="tennis_username" required>
+
+                <label for="tennis_password">Club password</label>
+                <input type="password" id="tennis_password" name="tennis_password" required>
+
+                <button type="submit">Save club login</button>
+
+                {% with messages = get_flashed_messages(with_categories=True, category_filter=["credentials"]) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="form-message {{ category }}">
+                        {{ message }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+              </form>
+            </div>
+
+            <div class="card setup-card">
+              <div class="card-header">
+                <h3>2. Connect Google Calendar</h3>
+                <span class="status-badge {% if google_calendar_connected %}complete{% else %}incomplete{% endif %}">
+                  {% if google_calendar_connected %}Connected{% else %}Not connected{% endif %}
+                </span>
+              </div>
+
+              <p>Tell us which calendar the BookingBot should reference. By default, the app will use <strong>TennisBookingBot</strong>. 
+              </p>
+
+              <form method="POST" action="{{ url_for('connect_google_calendar') }}" class="stack-form">
+
+                <label for="calendar_name">Calendar name:</label>
+                <input
+                  type="text"
+                  id="calendar_name"
+                  name="calendar_name"
+                  value="{{ google_calendar_name or 'TennisBookingBot' }}"
+                  required
+                >
+
+                <p class="helper-text">
+                  BookingBot reads and writes <strong>only</strong> to this calendar.
+                </p>
+
+                {% if google_calendar_connected %}
+                  <button type="submit" class="secondary-button">
+                    Reconnect Calendar
+                  </button>
+                {% else %}
+                  <button type="submit" class="primary-button">
+                    Connect Google Calendar
+                  </button>
+
+                  {% with messages = get_flashed_messages(with_categories=True, category_filter=["calendar"]) %}
+                    {% if messages %}
+                      {% for category, message in messages %}
+                        <div class="form-message {{ category }}">
+                          {{ message }}
+                        </div>
+                      {% endfor %}
+                    {% endif %}
+                  {% endwith %}
+
+                {% endif %}
+              </form>
+            </div>
+
+
+            <div class="card setup-card">
+              <div class="card-header">
+                  <h3>3. Manage partners</h3>
+                  <span class="status-badge optional">Optional</span>
+              </div>
+
+              <p>Enter your partner's name as it appears in the club booking system. You can use this nickname in your calendar events.
+              </p>
+
+              <form method="POST" action="{{ url_for('add_partner') }}" class="stack-form" style="margin-bottom: 2rem;">
+                  <div style="display: flex; gap: 10px;">
+                      <input type="text" name="full_name" placeholder="Full Name" required style="text-align: left;">
+                      <input type="text" name="nickname" placeholder="Nickname" required style="text-align: left;">
+                  </div>
+                  <button type="submit" class="primary-button">Add Partner</button>
+              </form>
+
+  
+              <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+                      <th style="padding: 10px;">Full Name</th>
+                      <th style="padding: 10px;">Nickname</th>
+                      <th style="padding: 10px; text-align: center;">Edit</th>
+                      <th style="padding: 10px; text-align: center;">Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for partner in partners %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                      <td style="padding: 10px;">
+                        <form action="{{ url_for('edit_partner', partner_id=partner.id) }}" method="POST" style="display:flex; gap:10px; align-items:center;">
+                          <input
+                            type="text"
+                            name="full_name"
+                            value="{{ partner.full_name }}"
+                            style="border: 1px solid transparent; background: transparent; width: 100%;"
+                            onfocus="this.style.border='1px solid #ccc'; this.style.background='white';"
+                          >
+                      </td>
+                      <td style="padding: 10px;">
+                          <input
+                            type="text"
+                            name="nickname"
+                            value="{{ partner.nickname }}"
+                            style="border: 1px solid transparent; background: transparent; width: 100%;"
+                            onfocus="this.style.border='1px solid #ccc'; this.style.background='white';"
+                          >
+                      </td>
+                      <td style="padding: 10px; text-align: center;">
+                          <button
+                            type="submit"
+                            title="Save Changes"
+                            style="background:none; border:none; cursor:pointer; font-size: 1.2rem;"
+                          >✏️</button>
+                        </form>
+                      </td>
+                      <td style="padding: 10px; text-align: center;">
+                        <form action="{{ url_for('delete_partner', partner_id=partner.id) }}" method="POST" style="display:inline;">
+                          <button
+                            type="submit"
+                            title="Delete"
+                            style="background:none; border:none; cursor:pointer; font-size: 1.2rem;"
+                            onclick="return confirm('Are you sure you want to remove this partner?')"
+                          >❌</button>
+                        </form>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              {% with messages = get_flashed_messages(with_categories=True, category_filter=["partner"]) %}
+                    {% if messages %}
+                      {% for category, message in messages %}
+                        <div class="form-message {{ category }}">
+                          {{ message }}
+                        </div>
+                      {% endfor %}
+                    {% endif %}
+                  {% endwith %}
+
+          </div>
+
+        </section>
+      </div>
+
+
+    </main>
+
+    {% include 'footer.html' %}
+
+
+    <script src="{{ url_for('static', filename='login-auth.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}" type="module"></script>
+  
+  </body>
+
+</html>

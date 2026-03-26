@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" >
+
+  <title>Flask Template</title>
+
+  </head>
+
+  <body>
+    {% include 'navbar_private.html' %}
+
+    <main>  
+
+      <div class="account-page">
+        <h1>My Account</h1>
+        <p class="account-subtitle">Manage your email, password, and account settings.</p>
+
+        <div class="account-grid">
+
+          <!-- Account info -->
+          <section class="card account-card">
+            <h2>Account Info</h2>
+            <p><strong>Email:</strong> {{ user_email }}</p>
+            <p><strong>User ID:</strong> {{ uid }}</p>
+          </section>
+
+          <!-- Update email -->
+          <section class="card account-card">
+            <h2>Update Email</h2>
+            <form method="POST" action="{{ url_for('update_account_email') }}" class="stack-form">
+              <label for="new_email">New email</label>
+              <input type="email" id="new_email" name="new_email" required>
+              <button type="submit">Update Email</button>
+            </form>
+          </section>
+
+          <!-- Update password -->
+          <section class="card account-card">
+            <h2>Update Password</h2>
+            <form method="POST" action="{{ url_for('update_account_password') }}" class="stack-form">
+              <label for="new_password">New password</label>
+              <input type="password" id="new_password" name="new_password" required>
+
+              <label for="confirm_password">Confirm password</label>
+              <input type="password" id="confirm_password" name="confirm_password" required>
+
+              <button type="submit">Update Password</button>
+            </form>
+          </section>
+
+          <!-- Delete account -->
+          <section class="card account-card danger-zone">
+            <h2>Delete Account</h2>
+            <p>
+              If you delete your account, all information associated with your account will be permanently deleted.
+              This cannot be undone.
+            </p>
+
+            <form method="POST" action="{{ url_for('delete_account_post') }}" class="stack-form">
+              <label for="delete_confirm">
+                Type <strong>DELETE</strong> to confirm
+              </label>
+              <input type="text" id="delete_confirm" name="delete_confirm" required>
+
+              <button type="submit" class="danger-button">Delete My Account</button>
+            </form>
+          </section>
+
+        </div>
+      </div>
+
+
+    </main>
+
+    {% include 'footer.html' %}
+
+
+    <script src="{{ url_for('static', filename='login-auth.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}" type="module"></script>
+  
+  </body>
+
+</html>
