@@ -4,8 +4,13 @@ import { createUserWithEmailAndPassword,
          signInWithEmailAndPassword,
          signInWithPopup,
          sendPasswordResetEmail,
-         doc,
-         setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+         onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
+import {
+    setDoc, 
+    getDoc, 
+    doc 
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 /* == UI - Elements == */
 const signInWithGoogleButtonEl = document.getElementById("sign-in-with-google-btn")
@@ -41,188 +46,158 @@ if (forgotPasswordButtonEl) {
     forgotPasswordButtonEl.addEventListener("click", resetPassword)
 }
 
+/* == Auth State Observer ==
+   This is the safety net. Fires on every sign in no matter what.
+   Ensures Firestore doc always exists with correct fields. */
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        await ensureUserDocument(user)
+    }
+})
 
 
+/* == Firestore User Document ==
+   Safe to call on every sign in.
+   Only writes if document doesn't exist yet — never overwrites. */
+async function ensureUserDocument(user) {
+    try {
+        const userRef = doc(db, "users", user.uid)
+        const userSnap = await getDoc(userRef)
+
+        if (!userSnap.exists()) {
+            await setDoc(userRef, {
+                created_at: new Date().toISOString().split('T')[0],
+                email: user.email,
+                autobook_enabled: false,
+                google_calendar_connected: false,
+                club_profile_connected: false,
+                user_id: user.uid
+            })
+            console.log("[Firestore] New user document created for:", user.email)
+        } else {
+            console.log("[Firestore] Existing user document found for:", user.email)
+        }
+    } catch (error) {
+        console.error("[Firestore] Failed to ensure user document:", error.code, error.message)
+    }
+}
 
 /* === Main Code === */
 
 /* = Functions - Firebase - Authentication = */
 
-// Function to sign in with Google authentication
 async function authSignInWithGoogle() {
-    // Configure Google Auth provider with custom parameters
-    provider.setCustomParameters({
-        'prompt': 'select_account'
-    });
-
+    provider.setCustomParameters({ 'prompt': 'select_account' })
     try {
-        // Attempt to sign in with a popup and retrieve user data
-        const result = await signInWithPopup(auth, provider);
-
-        // Check if the result or user object is undefined or null
-        if (!result || !result.user) {
-            throw new Error('Authentication failed: No user data returned.');
-        }
-
-        const user = result.user;
-        const email = user.email;
-
-        // Ensure the email is available in the user data
-        if (!email) {
-            throw new Error('Authentication failed: No email address returned.');
-        }
-
-        // Retrieve ID token for the user
-        const idToken = await user.getIdToken();
-
-        // Log in the user using the obtained ID token
-        loginUser(user, idToken);
-
+        const result = await signInWithPopup(auth, provider)
+        const user = result.user
+        const idToken = await user.getIdToken()  // ✅ defined before use
+        loginUser(user, idToken, '/dashboard')
     } catch (error) {
-        // Handle errors by logging and potentially updating the UI
-        handleLogging(error, 'Error during sign-in with Google');
+        console.error("Google sign in error:", error.message)
     }
 }
 
-
-// Function to create new account with Google auth - will also sign in existing users
 async function authSignUpWithGoogle() {
-    provider.setCustomParameters({
-        'prompt': 'select_account'
-    });
-
+    provider.setCustomParameters({ 'prompt': 'select_account' })
     try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const email = user.email;
+        const result = await signInWithPopup(auth, provider)
+        const user = result.user
+        const idToken = await user.getIdToken()  // ✅ defined before use
 
-        await addNewUserToFirestore(user);
+        // Check if new or returning user to decide where to redirect
+        const userSnap = await getDoc(doc(db, "users", user.uid))
+        const isNewUser = !userSnap.exists()
 
-        // Sign in user
-        const idToken = await user.getIdToken();
-        loginUser(user, idToken);
-        window.location.href = "/dashboard";
-        
+        // ensureUserDocument will run via onAuthStateChanged automatically
+        // but we can also call it directly here to guarantee timing
+        await ensureUserDocument(user)
+
+        // Redirect new users to onboarding, returning users to dashboard
+        loginUser(user, idToken, isNewUser ? '/instructions' : '/dashboard')
+
     } catch (error) {
-        // The AuthCredential type that was used or other errors.
-        console.error("Error during Google signup: ", error.message);
-        // Handle error appropriately here, e.g., updating UI to show an error message
+        console.error("Google sign up error:", error.message)
     }
 }
-
-
-
 
 function authSignInWithEmail() {
-
     const email = emailInputEl.value
     const password = passwordInputEl.value
 
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
-            // Signed in 
-            const user = userCredential.user;
-
-            user.getIdToken().then(function(idToken) {
-                loginUser(user, idToken)
-            });
-
-            console.log("User signed in: ", user)
+            const user = userCredential.user
+            user.getIdToken().then(idToken => loginUser(user, idToken, '/dashboard'))
         })
         .catch((error) => {
-            const errorCode = error.code;
-            console.error("Error code: ", errorCode)
-            if (errorCode === "auth/invalid-email") {
+            if (error.code === "auth/invalid-email") {
                 errorMsgEmail.textContent = "Invalid email"
-            } else if (errorCode === "auth/invalid-credential") {
+            } else if (error.code === "auth/invalid-credential") {
                 errorMsgPassword.textContent = "Login failed - invalid email or password"
-            } 
-        });
+            }
+        })
 }
 
-
-
-function authCreateAccountWithEmail() {
-
+async function authCreateAccountWithEmail() {
     const email = emailInputEl.value
     const password = passwordInputEl.value
 
-    createUserWithEmailAndPassword(auth, email, password)
-        .then(async (userCredential) => {
-            // Signed in 
-            
-            const user = userCredential.user;
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+        const user = userCredential.user
+        console.log("[Auth] Account created for:", user.email)
 
-            await addNewUserToFirestore(user)
-            setTimeout(100)
+        // Explicitly create the Firestore doc here too
+        // onAuthStateChanged will also fire but this guarantees it before redirect
+        await ensureUserDocument(user)
 
-            user.getIdToken().then(function(idToken) {
-                loginUser(user, idToken);
-            window.location.href = "/dashboard";
-            });
+        const idToken = await user.getIdToken()
+        loginUser(user, idToken, '/instructions')
 
-
-        })
-        .catch((error) => {
-            const errorCode = error.code;
-
-            if (errorCode === "auth/invalid-email") {
-                errorMsgEmail.textContent = "Invalid email"
-            } else if (errorCode === "auth/weak-password") {
-                errorMsgPassword.textContent = "Invalid password - must be at least 6 characters"
-            } else if (errorCode === "auth/email-already-in-use") {
-                errorMsgEmail.textContent = "An account already exists for this email."
-            }
-
-        });
-
+    } catch (error) {
+        console.error("[Auth] Signup error:", error.code, error.message)
+        if (error.code === "auth/invalid-email") {
+            errorMsgEmail.textContent = "Invalid email"
+        } else if (error.code === "auth/weak-password") {
+            errorMsgPassword.textContent = "Must be at least 6 characters"
+        } else if (error.code === "auth/email-already-in-use") {
+            errorMsgEmail.textContent = "An account already exists for this email"
+        }
+    }
 }
-
-
 
 function resetPassword() {
     const emailToReset = emailForgotPasswordEl.value
-
     clearInputField(emailForgotPasswordEl)
 
     sendPasswordResetEmail(auth, emailToReset)
-    .then(() => {
-        // Password reset email sent!
-        const resetFormView = document.getElementById("reset-password-view")
-        const resetSuccessView = document.getElementById("reset-password-confirmation-page")
-
-        resetFormView.style.display = "none"
-        resetSuccessView.style.display = "block"
-
-    })
-    .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
- 
-    });
-
+        .then(() => {
+            document.getElementById("reset-password-view").style.display = "none"
+            document.getElementById("reset-password-confirmation-page").style.display = "block"
+        })
+        .catch((error) => {
+            console.error("Password reset error:", error.code)
+        })
 }
 
-
-
-function loginUser(user, idToken) {
+function loginUser(user, idToken, redirectPath = '/dashboard') {
     fetch('/auth', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
         },
-        credentials: 'same-origin'  // Ensures cookies are sent with the request
+        credentials: 'same-origin'
     }).then(response => {
         if (response.ok) {
-            window.location.href = '/dashboard';
+            window.location.href = redirectPath
         } else {
-            console.error('Failed to login');
-            // Handle errors here
+            console.error('Flask auth failed')
         }
     }).catch(error => {
-        console.error('Error with Fetch operation: ', error);
-    });
+        console.error('Fetch error:', error)
+    })
 }
 
 

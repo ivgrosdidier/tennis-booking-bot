@@ -7,12 +7,7 @@
         <span class="closebtn">&times;</span>
         <a href="{{ url_for('dashboard') }}">BookingBot HQ</a>
         <a href="{{ url_for('instructions') }}">How it Works</a>
-        <div class="dropdown">
-            <a class="dropbtn" id="dropBtn">My Account</a>
-            <div class="dropdown-content">
-                <a href="{{ url_for('settings') }}">Settings</a>
-                <a id="sign-out-btn" href="{{ url_for('logout') }}">Logout</a>
-            </div>
-        </div>
+        <a href="{{ url_for('settings') }}">Privacy</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
     </div>
 </div>

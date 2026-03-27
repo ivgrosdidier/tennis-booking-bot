@@ -36,11 +36,15 @@ body {
     background-color: var(--primary-color);
     font-family: var(--primary-font);
     height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 main {
+    flex: 1;
     padding: 2rem;
-    height: 90vh;
+    overflow: auto;
 }
 
 
@@ -66,16 +70,15 @@ main {
     align-items: center;
     background-color: #C1E1C1;
     color: black;
-    box-shadow: 0px 8px 16px -4px rgba(128, 128, 128, 0.2);
-
-
+    box-shadow: 0px 4px 10px -2px rgba(128, 128, 128, 0.2);
     width: 100%;
-    
+    height: 60px;
 }
 
 .logo-img {
-    width: 80px;
+    width: 55px;
     margin-left: 1rem;
+    height: auto;
 }
 
 .logo {
@@ -88,15 +91,16 @@ main {
     text-decoration: none;
     color: #355E3B;
     font-weight: bold;
-    padding: 1.5rem 2rem;
+    padding: 0.5rem 0.8rem; /* Tighter padding */
     text-align: center;
-    font-size: 1.3rem;
+    font-size: 0.95rem;
 }
 
 .navbar-right {
     display: flex;
     align-items: center; 
-    margin-right: 2rem;
+    margin-right: 1.5rem;
+    gap: 5px;
 }
 
 .navbar a:hover {
@@ -118,15 +122,7 @@ main {
 
 /* Dropdown content (hidden by default) */
 .dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: #C1E1C1;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    margin-top: 1.5rem;
-    right: 0; 
-    left: auto;
-    white-space: nowrap;
+    margin-top: 0.5rem;
 }
 
 /* Links inside the dropdown */
@@ -205,6 +201,7 @@ input, button {
 /* Auth page styles - Login, Signup, Forgot Password */
 
 .auth-page_container {
+    background-image: url('/static/images/background-art.png');
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -269,7 +266,8 @@ input, button {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    width: 100%;
+    /* width: 100%; */
+    min-height: 100vh;
 }
 
 .login-btn {
@@ -445,7 +443,7 @@ input, button {
 
 .stack-form button,
 .primary-button {
-  background: #355E3B;
+  background: #192d1c;
   color: white;
 }
 
@@ -544,6 +542,229 @@ input, button {
 
 
 
+/* === Flash Popup === */
+.flash-popup {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+  width: auto;
+}
+
+.flash-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  animation: slideIn 0.3s ease;
+
+  /* solid backgrounds — no transparency */
+  opacity: 1;
+}
+
+.flash-success {
+  background-color: #dcfce7;  /* solid green */
+  color: #166534;
+  border-left: 2px solid #22c55e;
+}
+
+.flash-error {
+  background-color: #fee2e2;  /* solid red */
+  color: #991b1b;
+  border: 2px solid #ef4444;
+}
+
+.flash-close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-left: 1rem;
+  color: inherit;
+  padding: 0;
+  width: auto;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* === Instruction styles === */
+
+/* === Instructions Page Specific Styles === */
+
+.instructions-page {
+    max-width: 800px; /* Limits width so it doesn't stretch too far */
+    margin: 0 auto;
+}
+
+.instructions-hero {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.section-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--grey-color);
+    margin: 2rem 0 1rem;
+    font-size: 0.85rem;
+}
+
+.steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* This is the magic part that puts the number next to the title */
+.step-card {
+    display: flex;
+    gap: 1.5rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.step-number {
+    background: var(--navbar-color);
+    color: var(--footer-color);
+    font-weight: 800;
+    font-size: 1.2rem;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevents the circle from squishing */
+}
+
+.step-body {
+    flex: 1;
+}
+
+.step-body h3 {
+    margin: 0 0 0.5rem 0; /* Removes default top margin to align with number */
+    text-align: left; /* Overrides your global center align */
+    font-size: 1.25rem;
+}
+
+.step-body p {
+    margin: 0 0 1rem 0;
+    line-height: 1.6;
+    color: #4b5563;
+    text-align: left;
+}
+
+.step-note {
+    display: block;
+    font-size: 0.9rem;
+    background: var(--secondary-light-color);
+    padding: 0.75rem;
+    border-left: 3px solid var(--secondary-color);
+    border-radius: 4px;
+}
+
+/* Example Box & Info Grid */
+.example-box {
+    background: #f8fafc;
+    border: 1px dashed var(--grey-color);
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+.example-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.example-cell {
+    flex: 1;
+    min-width: 200px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+.info-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.cta-row {
+    margin: 4rem 0;
+    text-align: center;
+}
+
+/* === Example template === */
+
+.example-box {
+    background: #f8fafc;
+    border: 1px solid var(--navbar-color);
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+.example-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.example-cell {
+    flex: 1;
+    text-align: center;
+}
+
+.example-cell .label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--grey-color);
+    margin-bottom: 8px;
+}
+
+.example-cell .value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--footer-color);
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    margin-bottom: 8px;
+}
+
+.example-cell .sub {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+
 /* Footer Styles */
 
 footer {
@@ -551,17 +772,15 @@ footer {
     color: white; /* Dark grey text */
     font-family: var(--primary-font);
     text-align: center; /* Centering the content */
-    padding: 10px 0; /* Padding above and below */
+    padding: 1px 0; /* Padding above and below */
     font-size: 14px; /* Standard font size */
 }
 
 .simple-footer {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
-    text-align: center;
+    padding: 0 0.5rem;
 }
 
 .simple-footer a {

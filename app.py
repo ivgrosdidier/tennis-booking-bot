@@ -1,5 +1,4 @@
 from flask import Flask, redirect, render_template, request, make_response, session, abort, jsonify, url_for, flash
-import secrets
 import requests 
 from bs4 import BeautifulSoup
 from functools import wraps
@@ -7,9 +6,11 @@ import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from datetime import timedelta
 import os
+import json
 from cryptography.fernet import Fernet, InvalidToken
 from google_auth_oauthlib.flow import Flow 
 from googleapiclient.discovery import build
+import random, string
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -38,8 +39,7 @@ CLUB_LOGIN_URL = os.environ.get("CLUB_LOGIN_URL")
 
 # set google cal scope
 SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
+    #"openid",
     "https://www.googleapis.com/auth/calendar"
 ]
 
@@ -124,7 +124,10 @@ def authorize():
 
 @app.route('/')
 def home():
-    return render_template('bot_home.html')
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    else:
+        return render_template('login.html')
 
 @app.route('/login')
 def login():
@@ -174,14 +177,17 @@ def dashboard():
     autobook_enabled = data.get('autobook_enabled', False)
     club_profile_connected = data.get('club_profile_connected', False)
     google_calendar_connected = data.get('google_calendar_connected', False)
-    players = data.get('players', [])
+
+    # get partner names 
+    partners_docs = db.collection('users').document(uid).collection('partners').get()
+    partners = [{'id': doc.id, **doc.to_dict()} for doc in partners_docs]
 
     return render_template(
         'dashboard.html',
         autobook_enabled=autobook_enabled,
         club_profile_connected=club_profile_connected,
         google_calendar_connected=google_calendar_connected,
-        players=players
+        partners=partners
     )
 
 
@@ -198,8 +204,12 @@ def toggle_autobook():
         'autobook_enabled': enabled
     }, merge=True)
 
-    status = "enabled" if autobook_enabled else "disabled"
-    flash(f"Auto-book is now {status}!", "autobook") 
+    if enabled:
+        status = "enabled"
+        flash(f"Auto-book is now {status}.", "success")
+    else:
+        status = "disabled"
+        flash(f"Auto-book is now {status}.", "error")
 
     return redirect(url_for('dashboard'))
 
@@ -242,12 +252,8 @@ def test_login_credentials(username, password):
 def save_tennis_credentials():
     uid = get_current_uid()
 
-    tennis_username = (request.form.get('tennis_username') or '').strip()
-    tennis_password = request.form.get('tennis_password') or ''
-
-    if not tennis_username or not tennis_password:
-        flash('Please enter both your tennis username and password.', 'credentials')
-        return redirect(url_for('dashboard'))
+    tennis_username = request.form.get('tennis_username')
+    tennis_password = request.form.get('tennis_password') 
 
     is_valid, message = test_login_credentials(tennis_username, tennis_password)
 
@@ -257,7 +263,7 @@ def save_tennis_credentials():
             'tennis_password_encrypted': None,
             'club_profile_connected': False
         }, merge=True)
-        flash(f'Tennis login failed: {message}', 'credentials')
+        flash(f'Tennis login failed: {message}', 'error')
         return redirect(url_for('dashboard'))
     
     else:
@@ -270,7 +276,7 @@ def save_tennis_credentials():
             'club_profile_connected': True
         }, merge=True)
 
-        flash('Tennis credentials saved.', 'credentials')
+        flash('Tennis credentials saved.', 'success')
         return redirect(url_for('dashboard'))
 
 
@@ -278,15 +284,12 @@ def save_tennis_credentials():
 ##############################################
 """ Card 2: Connect to Google Cal """
 
+DEFAULT_CALENDAR_NAME = "TennisBookingBot"
 
 @app.route('/connect-google-calendar', methods=['POST'])
 @auth_required
 def connect_google_calendar():
-    calendar_name = (request.form.get('calendar_name') or '').strip()
-
-    if not calendar_name:
-        flash('Please enter the name of the Google Calendar you want to connect.', 'calendar')
-        return redirect(url_for('dashboard'))
+    calendar_name = (request.form.get('calendar_name') or '').strip() or DEFAULT_CALENDAR_NAME
 
     session["requested_calendar_name"] = calendar_name
 
@@ -295,7 +298,6 @@ def connect_google_calendar():
 
     authorization_url, state = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
         prompt="consent"
     )
 
@@ -312,7 +314,7 @@ def oauth2callback():
     state = session.get("google_oauth_state")
     verifier = session.get("google_oauth_verifier")
 
-    requested_calendar_name = session.get("requested_calendar_name")
+    requested_calendar_name = session.get("requested_calendar_name", DEFAULT_CALENDAR_NAME)
 
     if not state or not requested_calendar_name:
         flash("Google Calendar connection failed. Please try again.", "calendar")
@@ -333,49 +335,115 @@ def oauth2callback():
         None
     )
 
+    # if not found, create calendar
     if not matched_calendar:
-        db.collection('users').document(uid).set({
-            'google_calendar_connected': False,
-            'google_calendar_name': requested_calendar_name,
-            'google_calendar_id': None
-        }, merge=True)
+        new_calendar = service.calendars().insert(body={
+            "summary": requested_calendar_name,
+            "description": "Managed by TennisBookingBot",
+            "timeZone": "America/Toronto"  # adjust or make dynamic
+        }).execute()
 
-        flash(
-            f'No calendar named "{requested_calendar_name}" was found in your Google account.',
-            'calendar'
-        )
-        return redirect(url_for("dashboard"))
+        # Add it to the user's calendar list so it appears in their Google Cal
+        service.calendarList().insert(body={"id": new_calendar["id"]}).execute()
+
+        calendar_id = new_calendar["id"]
+        calendar_summary = new_calendar["summary"]
+        was_created = True
+    else:
+        calendar_id = matched_calendar["id"]
+        calendar_summary = matched_calendar.get("summary")
+        was_created
 
     db.collection('users').document(uid).set({
         'google_calendar_connected': True,
-        'google_calendar_name': matched_calendar.get("summary"),
-        'google_calendar_id': matched_calendar.get("id"),
+        'google_calendar_name': calendar_summary,
+        'google_calendar_id': calendar_id,
         'google_refresh_token_encrypted': encrypt_string(credentials.refresh_token) if credentials.refresh_token else None,
     }, merge=True)
 
-    flash(f'Google Calendar connected to "{matched_calendar.get("summary")}".', 'calendar')
+    if was_created:
+        flash(f'No calendar named "{requested_calendar_name}" was found. BookingBot created it for you!', 'success')
+    else:
+        flash(f'Google Calendar connected to "{calendar_summary}".', 'success')
+
     return redirect(url_for("dashboard"))
 
 
 ##############################################
 """ Card 3: Save and delete players """
 
+_players_cache = None
+
+def get_club_players():
+    global _players_cache
+
+    # If already loaded, return immediately — no file read
+    if _players_cache is not None:
+        return _players_cache
+
+    path = 'data/players.json'
+
+    try:
+        with open(path, encoding='utf-8') as f:
+            raw = json.load(f)
+            # raw is a dict — we only need the keys (names)
+            _players_cache = {name.strip().title() for name in raw.keys()}
+            print(f"[Club Directory] Loaded {len(_players_cache)} players")
+    except FileNotFoundError:
+        print(f"[WARNING] players.json not found at {path}")
+        _players_cache = set()
+
+    return _players_cache
+
+def check_name_in_club_directory(full_name):
+    """
+    Returns True if the titled name exists in players.json.
+    Returns False if not found.
+    """
+    players = get_club_players()
+    return full_name.strip().title() in players
+
+
 @app.route('/add-partner', methods=['POST'])
 @auth_required
 def add_partner():
     uid = get_current_uid()
-    full_name = request.form.get('full_name').strip()
-    nickname = request.form.get('nickname').strip()
+    full_name = request.form.get('full_name').strip().title()
+    nickname = request.form.get('nickname').strip().title()
 
     if full_name and nickname:
-        # Firestore .add() automatically generates a random Partner ID
-        db.collection('users').document(uid).collection('partners').add({
-            'uid': uid,
+
+        if not check_name_in_club_directory(full_name):
+            flash(
+                f'Player name "{full_name}" not found in club directory. '
+                f'Please check the spelling.',
+                'error'
+            )
+            return redirect(url_for('dashboard'))
+
+        partners_ref = db.collection('users').document(uid).collection('partners')
+
+        # Check if this full name already has an entry for this user
+        existing_name = partners_ref.where('full_name', '==', full_name).get()
+        if existing_name:
+            flash(f'"{full_name}" already has a nickname. Edit the existing entry instead.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Check for duplicate nickname for this user
+        existing = partners_ref.where('nickname', '==', nickname).get()
+        if existing:
+            flash('Nickname already exists. Edit the existing one or choose a different nickname.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        partner_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=3))      
+
+        partners_ref.add({
+            'partner_id': partner_id,
             'full_name': full_name,
-            'nickname': nickname,
-            'created_at': firestore.SERVER_TIMESTAMP
+            'nickname': nickname
         })
-        flash('Partner added!', 'partner')
+        flash('Partner added!', 'success')
+
     return redirect(url_for('dashboard'))
 
 @app.route('/edit-partner/<partner_id>', methods=['POST'])
@@ -383,14 +451,39 @@ def add_partner():
 def edit_partner(partner_id):
     uid = get_current_uid()
     # Get the updated text from the editable inputs in the table
-    new_name = request.form.get('full_name')
-    new_nick = request.form.get('nickname')
+    new_name = request.form.get('full_name').strip().title()
+    new_nick = request.form.get('nickname').strip().title()
 
-    db.collection('users').document(uid).collection('partners').document(partner_id).update({
+    # Check against club directory first — block if not found
+    if not check_name_in_club_directory(new_name):
+        flash(
+            f'Player name "{new_name}" not found in club directory. '
+            f'Please check the spelling.',
+            'error'
+        )
+        return redirect(url_for('dashboard'))
+
+    partners_ref = db.collection('users').document(uid).collection('partners')
+
+    # Check if this full name already exists on a DIFFERENT partner entry
+    existing_name = partners_ref.where('full_name', '==', new_name).get()
+    for doc in existing_name:
+        if doc.id != partner_id:
+            flash(f'"{new_name}" already has a nickname. Edit the existing entry instead.', 'error')
+            return redirect(url_for('dashboard'))
+
+    # Check for duplicate nickname excluding self
+    existing = partners_ref.where('nickname', '==', new_nick).get()
+    for doc in existing:
+        if doc.id != partner_id:
+            flash('Nickname already in use by another partner.', 'error')
+            return redirect(url_for('dashboard'))
+
+    partners_ref.document(partner_id).update({
         'full_name': new_name,
         'nickname': new_nick
     })
-    flash('Partner updated!', 'partner')
+    flash('Partner updated!', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/delete-partner/<partner_id>', methods=['POST'])
@@ -398,18 +491,48 @@ def edit_partner(partner_id):
 def delete_partner(partner_id):
     uid = get_current_uid()
     db.collection('users').document(uid).collection('partners').document(partner_id).delete()
-    flash('Partner removed.', 'partner')
+    flash('Partner removed.', 'success')
     return redirect(url_for('dashboard'))
 
 
 
 ##############################################
-""" My account functions """
+""" Settings functions """
 @app.route('/settings')
 @auth_required
 def settings():
     uid = get_current_uid()
     return render_template('settings.html')
+
+
+@app.route('/delete-account', methods=['POST'])
+@auth_required
+def delete_account():
+    uid = get_current_uid()
+
+    try:
+        # Step 1 — Delete partners subcollection
+        # Firestore does NOT auto-delete subcollections when parent is deleted
+        partners = db.collection('users').document(uid).collection('partners').get()
+        for partner in partners:
+            partner.reference.delete()
+
+        # Step 2 — Delete the user document itself
+        db.collection('users').document(uid).delete()
+
+        # Step 3 — Clear the Flask session
+        session.clear()
+
+        print(f"[Account Deletion] Successfully deleted all data for uid={uid}")
+        flash('Your account has been permanently deleted.', 'success')
+
+    except Exception as e:
+        print(f"[Account Deletion] Error deleting uid={uid}: {e}")
+        flash('Something went wrong while deleting your account. Please try again.', 'error')
+        return redirect(url_for('settings'))
+
+    return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

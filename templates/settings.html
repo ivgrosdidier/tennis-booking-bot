@@ -15,75 +15,116 @@
   <body>
     {% include 'navbar_private.html' %}
 
-    <main>  
-
-      <div class="account-page">
-        <h1>My Account</h1>
-        <p class="account-subtitle">Manage your email, password, and account settings.</p>
-
-        <div class="account-grid">
-
-          <!-- Account info -->
-          <section class="card account-card">
-            <h2>Account Info</h2>
-            <p><strong>Email:</strong> {{ user_email }}</p>
-            <p><strong>User ID:</strong> {{ uid }}</p>
-          </section>
-
-          <!-- Update email -->
-          <section class="card account-card">
-            <h2>Update Email</h2>
-            <form method="POST" action="{{ url_for('update_account_email') }}" class="stack-form">
-              <label for="new_email">New email</label>
-              <input type="email" id="new_email" name="new_email" required>
-              <button type="submit">Update Email</button>
-            </form>
-          </section>
-
-          <!-- Update password -->
-          <section class="card account-card">
-            <h2>Update Password</h2>
-            <form method="POST" action="{{ url_for('update_account_password') }}" class="stack-form">
-              <label for="new_password">New password</label>
-              <input type="password" id="new_password" name="new_password" required>
-
-              <label for="confirm_password">Confirm password</label>
-              <input type="password" id="confirm_password" name="confirm_password" required>
-
-              <button type="submit">Update Password</button>
-            </form>
-          </section>
-
+    <main>
+        <div class="instructions-page">
+    
+          <!-- Hero -->
+          <div class="instructions-hero">
+            <h1>Settings & Privacy</h1>
+            <p style="color: #555; font-size: 1rem;">Understand how your data is used and manage your account.</p>
+          </div>
+    
+          <!-- Privacy Policy -->
+          <p class="section-label">Privacy policy — last updated March 26, 2026</p>
+          <div class="steps-list" style="margin-bottom: 2.5rem;">
+    
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <div class="step-body">
+                <h3>Introduction</h3>
+                <p>BookingBot is committed to protecting your privacy. This policy explains how we handle your data, specifically concerning Google User Data.</p>
+              </div>
+            </div>
+    
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <div class="step-body">
+                <h3>Data collection and use</h3>
+                <p>Our app requests access to your Google Calendar to provide automated booking services.</p>
+                <span class="step-note">
+                  <strong>What we access:</strong> Your calendar list, to create a dedicated TennisBookingBot calendar and read/write events related to your tennis reservations.<br><br>
+                  <strong>Why we access it:</strong> To automatically book your desired courts when the booking window opens at 8 AM, and to update those events once booked.
+                </span>
+              </div>
+            </div>
+    
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <div class="step-body">
+                <h3>Data storage and retention</h3>
+                <p>We store your OAuth refresh tokens in an encrypted database using industry-standard AES encryption, allowing the bot to manage your calendar while you are offline.</p>
+                <span class="step-note">We do not scrape or store your personal calendar events on our servers. We only interact with the Google Calendar API in real-time to execute your requested tasks.</span>
+              </div>
+            </div>
+    
+            <div class="step-card">
+              <div class="step-number">4</div>
+              <div class="step-body">
+                <h3>Data sharing and disclosure</h3>
+                <p>We do not share, sell, or trade your Google user data with any third-party AI models, advertisers, or external entities. Your data is used solely to provide the functional features of the app.</p>
+              </div>
+            </div>
+    
+            <div class="step-card">
+              <div class="step-number">5</div>
+              <div class="step-body">
+                <h3>User control</h3>
+                <p>You may revoke the app's access to your Google account at any time via your
+                  <a href="https://myaccount.google.com/permissions" target="_blank" style="color: #192d1c; font-weight: 600;">Google Security Settings</a>.
+                  Upon request or account deletion, we will permanently remove all encrypted tokens and personal data associated with your account.
+                </p>
+              </div>
+            </div>
+    
+          </div>
+    
           <!-- Delete account -->
-          <section class="card account-card danger-zone">
-            <h2>Delete Account</h2>
-            <p>
-              If you delete your account, all information associated with your account will be permanently deleted.
-              This cannot be undone.
+          <p class="section-label">Delete my account</p>
+          <div class="card" style="border-color: #fecaca; background: #fff5f5; margin-bottom: 3rem;">
+            <h3 style="color: #991b1b; margin: 0 0 0.5rem;">Delete your account</h3>
+            <p style="color: #7f1d1d; font-size: 0.93rem; line-height: 1.65; margin: 0 0 1.25rem;">
+              This will permanently delete your account and all associated data, including your club credentials,
+              Google Calendar connection, partners list, and booking preferences.
+              <strong>This action cannot be undone.</strong>
             </p>
-
-            <form method="POST" action="{{ url_for('delete_account_post') }}" class="stack-form">
-              <label for="delete_confirm">
-                Type <strong>DELETE</strong> to confirm
-              </label>
-              <input type="text" id="delete_confirm" name="delete_confirm" required>
-
-              <button type="submit" class="danger-button">Delete My Account</button>
+            <button
+              onclick="document.getElementById('deleteModal').style.display='flex'"
+              style="background: #dc2626; color: white; border: none; border-radius: 10px; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; width: auto;">
+              Delete my account
+            </button>
+          </div>
+    
+        </div>
+      </main>
+    
+      <!-- Confirmation Modal -->
+      <div id="deleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="max-width: 420px; width: 90%;">
+          <h3 style="margin: 0 0 0.75rem; font-size: 1.1rem;">Are you sure?</h3>
+          <p style="font-size: 0.93rem; color: #555; line-height: 1.65; margin: 0 0 1.5rem;">
+            Deleting your account will permanently remove <strong style="color: #991b1b;">all of your data</strong> from our systems.
+            Your Google Calendar connection, club credentials, and partners list will all be erased.
+            This cannot be reversed.
+          </p>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <button
+              onclick="document.getElementById('deleteModal').style.display='none'"
+              class="secondary-button"
+              style="width: auto; padding: 0.65rem 1.25rem;">
+              Cancel
+            </button>
+            <form action="{{ url_for('delete_account') }}" method="POST" style="display: inline;">
+              <button type="submit"
+                style="background: #dc2626; color: white; border: none; border-radius: 10px; padding: 0.65rem 1.25rem; font-size: 0.93rem; font-weight: 600; cursor: pointer; width: auto;">
+                Yes, delete everything
+              </button>
             </form>
-          </section>
-
+          </div>
         </div>
       </div>
-
-
-    </main>
-
-    {% include 'footer.html' %}
-
-
-    <script src="{{ url_for('static', filename='login-auth.js') }}" type="module"></script>
-    <script src="{{ url_for('static', filename='scripts.js') }}" type="module"></script>
-  
-  </body>
-
-</html>
+    
+      {% include 'footer.html' %}
+      <script src="{{ url_for('static', filename='login-auth.js') }}" type="module"></script>
+      <script src="{{ url_for('static', filename='scripts.js') }}" type="module"></script>
+    </body>
+    </html>

@@ -1,0 +1,20 @@
+Privacy Policy for TennisBookingBot
+Last Updated: March 26, 2026
+
+1. Introduction
+TennisBookingBot ("we," "our," or "the App") is committed to protecting your privacy. This policy explains how we handle your data, specifically concerning Google User Data.
+
+2. Data Collection and Use
+Our App requests access to your Google Calendar to provide automated booking services.
+What we access: We access your calendar list to create a dedicated "TennisBookingBot" calendar and read/write events specifically related to your tennis reservations.
+Why we access it: To automatically book your desired courts when the system opens up at 8am and to update those events when booked.
+
+3. Data Storage and Retention
+Tokens: We store your OAuth refresh tokens in an encrypted database (using industry-standard AES encryption) to allow the bot to manage your calendar while you are offline.
+Event Data: We do not "scrape" or store your personal calendar events on our servers. We only interact with the Google Calendar API in real-time to execute your requested tasks.
+
+4. Data Sharing and Disclosure
+We do not share, sell, or trade your Google user data with any third-party AI models, advertisers, or external entities. Your data is used solely to provide the functional features of the App.
+
+5. User Control
+You may revoke the App's access to your Google account at any time via your Google Security Settings. Upon request, we will delete all encrypted tokens associated with your account from our database.
