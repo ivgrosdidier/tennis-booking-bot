@@ -43,12 +43,10 @@ SCOPES = [
     "https://www.googleapis.com/auth/calendar"
 ]
 
-
 # Firebase Admin SDK setup
 cred = credentials.Certificate("firebase-auth.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
-
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1" #only for development/testing
 
@@ -377,21 +375,29 @@ _players_cache = None
 def get_club_players():
     global _players_cache
 
-    # If already loaded, return immediately — no file read
+    # 1. Return the memory cache if it already exists
     if _players_cache is not None:
         return _players_cache
 
-    path = 'data/players.json'
-
     try:
-        with open(path, encoding='utf-8') as f:
-            raw = json.load(f)
-            # raw is a dict — we only need the keys (names)
-            _players_cache = {name.strip().title() for name in raw.keys()}
-            print(f"[Club Directory] Loaded {len(_players_cache)} players")
-    except FileNotFoundError:
-        print(f"[WARNING] players.json not found at {path}")
-        _players_cache = set()
+        # 2. Pull all documents from your new collection
+        # .stream() is efficient for reading the whole collection at once
+        players_ref = db.collection("club_players").stream()
+        
+        # 3. Rebuild the dictionary: { "Player Name": "email@example.com" }
+        # doc.id is the Name (since we used it as the Document ID)
+        # doc.to_dict().get('email') fetches the email field inside
+        _players_cache = {
+            doc.id: doc.to_dict().get('email') 
+            for doc in players_ref
+        }
+        
+        print(f"[Firestore] Loaded {len(_players_cache)} players into cache")
+        
+    except Exception as e:
+        print(f"[ERROR] Could not fetch players from Firestore: {e}")
+        # Initialize as empty dict so the app doesn't crash on lookup
+        _players_cache = {}
 
     return _players_cache
 
@@ -534,5 +540,5 @@ def delete_account():
     return redirect(url_for('login'))
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

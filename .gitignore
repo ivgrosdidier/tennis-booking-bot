@@ -1,5 +1,3 @@
 firebase-auth.json
 .env
-data/players.csv
-data/players.json
-firebase_config.py
+data/
