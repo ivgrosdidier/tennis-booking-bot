@@ -6,7 +6,7 @@ from helpers.players import check_name_in_club_directory
 from extensions import db, auth_required, get_current_uid, get_logger
 
 logger = get_logger(__name__)
- 
+
 partners_bp = Blueprint("partners", __name__)
 
 def _partners_ref(uid: str):

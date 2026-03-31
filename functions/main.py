@@ -1,3 +1,5 @@
+## scheduler trigger and top level orchestration 
+
 from firebase_functions import scheduler_fn
 from firebase_functions.options import Timezone
 from datetime import date
@@ -8,7 +10,7 @@ from booking import book_court
 from calendar_helpers import mark_event_booked
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SEASON_START = (8, 11)   # August 11  ← change these easily
+SEASON_START = (4, 11)   # April 11 
 SEASON_END   = (11, 1)   # November 1
 
 @scheduler_fn.on_schedule(

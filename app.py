@@ -32,14 +32,5 @@ def home():
 
 # 6. ENTRY POINT
 if __name__ == "__main__":
-    try:
-        port = int(os.environ.get("PORT", 5000))
-        logger.info(f"Attempting to start on port {port}...")
-        app.run(debug=not IS_CLOUD, host="0.0.0.0", port=port)
-    except Exception:
-        # This will print the EXACT error and the line number to your terminal
-        print("\n" + "="*50)
-        print("CRITICAL STARTUP ERROR DETECTED:")
-        print("="*50)
-        traceback.print_exc() 
-        print("="*50 + "\n")
+    port = int(os.environ.get("PORT", 8080)) # Cloud Run sets this automatically
+    app.run(host="0.0.0.0", port=port)

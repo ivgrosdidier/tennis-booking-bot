@@ -8,3 +8,5 @@ data/
 firebase-auth.json
 scripts/
 README.md
+functions/
+privacy/
