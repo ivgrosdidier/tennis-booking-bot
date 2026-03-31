@@ -816,6 +816,7 @@ footer {
         padding: 0;
         padding-bottom: 40rem;
         margin: 0;
+        z-index: 1000;
     }
 
     .navbar-right a {
@@ -871,7 +872,8 @@ footer {
         right: 1rem;
         font-size: 3rem;
         cursor: pointer;
-        color: black
+        color: black;
+        z-index: 1001;
     }
 
     .simple-footer {
