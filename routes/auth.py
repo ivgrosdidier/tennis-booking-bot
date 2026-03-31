@@ -1,33 +1,10 @@
-import logging
 from functools import wraps
 from flask import Blueprint, redirect, render_template, request, make_response, session, url_for
 from firebase_admin import auth
+from extensions import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 auth_bp = Blueprint("auth", __name__)
-
-
-# ── Shared helpers (imported by other route files) ─────────────────────────────
-
-def get_current_uid() -> str:
-    uid = session.get("user", {}).get("uid")
-    if not uid:
-        raise ValueError("No authenticated user uid found in session")
-    return uid
-
-
-def auth_required(f):
-    """Decorator — redirects to login if user is not in session."""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "user" not in session:
-            logger.warning("Unauthenticated access attempt")
-            return redirect(url_for("auth.login"))
-        return f(*args, **kwargs)
-    return decorated
-
-
-# ── Routes ─────────────────────────────────────────────────────────────────────
 
 @auth_bp.route("/auth", methods=["POST"])
 def authorize():

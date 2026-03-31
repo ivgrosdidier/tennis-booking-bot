@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from extensions import db
-from routes.auth import auth_required, get_current_uid
+from flask import Blueprint, render_template, redirect, url_for, flash, session
+from extensions import db, auth_required, get_current_uid, get_logger
 
-settings_bp = Blueprint('settings', __name__)
+logger = get_logger(__name__)
+settings_bp = Blueprint("settings", __name__)
 
 @settings_bp.route('/settings')
 @auth_required

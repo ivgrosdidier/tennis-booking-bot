@@ -1,24 +1,35 @@
-import os
-import json
-import logging
-import firebase_admin
+import os, json, sys, logging, firebase_admin
 from firebase_admin import credentials, firestore
 from cryptography.fernet import Fernet
-from config import Config, IS_DEV, IS_CLOUD
+from config import Config, IS_DEV
 
 # logging
-# local: log to console with timestamp, level, module name 
-# cloud run: log to console 
-logging.basicConfig(
-    level=logging.DEBUG if IS_DEV else logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s" if IS_DEV
-           else "[%(levelname)s] %(name)s — %(message)s"
-    # Local:     2026-03-29 10:00:00 [INFO] routes.partners — Partner added uid=abc
-    # Cloud Run: [INFO] routes.partners — Partner added uid=abc
-    #            (Cloud Logging adds its own timestamp)
-)
- 
-logger = logging.getLogger(__name__)
+def get_logger(name):
+    logger = logging.getLogger(name)
+    
+    # Only configure if handlers don't exist yet (prevents double-logging)
+    if not logger.handlers:
+        logger.setLevel(logging.DEBUG if IS_DEV else logging.INFO)
+        
+        # Your clever logic for Cloud vs Local timestamps
+        if IS_DEV:
+            fmt = "%(asctime)s [%(levelname)s] %(name)s — %(message)s"
+        else:
+            fmt = "[%(levelname)s] %(name)s — %(message)s"
+            
+        formatter = logging.Formatter(fmt)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
+        # Critical: prevent logs from "bubbling up" to the root logger 
+        # which might have different, messy settings.
+        logger.propagate = False
+        
+    return logger
+
+# Create a root logger for extensions itself
+logger = get_logger(__name__)
 
 # Firebase
 firebase_config_json = os.getenv("FIREBASE_CONFIG_JSON")
@@ -36,3 +47,19 @@ db = firestore.client()
 # fernet encryption
 fernet = Fernet(Config.FERNET_KEY.encode())
 
+# helper functions 
+def get_current_uid() -> str:
+    uid = session.get("user", {}).get("uid")
+    if not uid:
+        raise ValueError("No authenticated user uid found in session")
+    return uid
+
+def auth_required(f):
+    """Decorator — redirects to login if user is not in session."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user" not in session:
+            logger.warning("Unauthenticated access attempt")
+            return redirect(url_for("auth.login"))
+        return f(*args, **kwargs)
+    return decorated

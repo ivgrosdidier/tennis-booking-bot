@@ -1,5 +1,5 @@
 from google_auth_oauthlib.flow import Flow
-from config import Config, SCOPES
+from config import Config
 
 def build_google_flow(state=None):
     return Flow.from_client_config(
@@ -11,6 +11,6 @@ def build_google_flow(state=None):
                 "token_uri":     "https://oauth2.googleapis.com/token",
             }
         },
-        scopes=SCOPES,
+        scopes=Config.SCOPES,
         state=state
     )
