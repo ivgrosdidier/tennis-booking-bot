@@ -1,13 +1,11 @@
-import logging
 from flask import Blueprint, request, redirect, url_for, flash, session
 from googleapiclient.discovery import build
-from extensions import db
+from extensions import db, auth_required, get_current_uid, get_logger
 from helpers.crypto import encrypt_string
 from helpers.google_cal import build_google_flow
-from routes.auth import auth_required, get_current_uid
 from config import Config
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 calendar_bp = Blueprint("calendar", __name__)
 
 

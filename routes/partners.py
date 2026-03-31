@@ -1,12 +1,12 @@
-import logging
 import random
 import string
 from flask import Blueprint, request, redirect, url_for, flash
 from extensions import db
 from helpers.players import check_name_in_club_directory
-from routes.auth import auth_required, get_current_uid
+from extensions import db, auth_required, get_current_uid, get_logger
+
+logger = get_logger(__name__)
  
-logger = logging.getLogger(__name__)
 partners_bp = Blueprint("partners", __name__)
 
 def _partners_ref(uid: str):
@@ -82,7 +82,7 @@ def edit_partner(partner_id):
         return redirect(url_for("dashboard.dashboard"))
  
     ref = _partners_ref(uid)
- s
+
     if _check_duplicate_name(ref, new_name, exclude_id=partner_id):
         flash(f'"{new_name}" already has a nickname. Edit the existing entry instead.', "error")
         return redirect(url_for("dashboard.dashboard"))

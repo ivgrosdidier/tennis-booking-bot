@@ -1,8 +1,12 @@
 import os
-import logging
 from flask import Flask, redirect, url_for
 from config import Config
-from extensions import IS_CLOUD # Use the central logger logic
+from extensions import IS_CLOUD, IS_DEV, init_fernet, get_logger # Use the central logger logic
+import traceback 
+
+# logging
+logger = get_logger("app_root")
+logger.info(f"App started — IS_CLOUD={IS_CLOUD} IS_DEV={IS_DEV}")
 
 # 1. ENVIRONMENT CONFIG
 # Use the centralized IS_CLOUD from extensions
@@ -13,17 +17,13 @@ if not IS_CLOUD:
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# 3. REGISTER BLUEPRINTS (The Clean Way)
-# This one import replaces all 6 manual imports
-from routes import all_blueprints
+# init encryption
+init_fernet(Config.FERNET_KEY)
 
+# import blueprints 
+from routes import all_blueprints
 for bp in all_blueprints:
     app.register_blueprint(bp)
-
-# 4. LOGGING
-# Use your consistent get_logger function
-logger = logging.getLogger(__name__)
-logger.info(f"App started — IS_CLOUD={IS_CLOUD} IS_DEV={IS_DEV}")
 
 # 5. ROUTES
 @app.route('/')
@@ -32,7 +32,14 @@ def home():
 
 # 6. ENTRY POINT
 if __name__ == "__main__":
-    # Cloud Run uses PORT 8080 usually, local uses 5000
-    port = int(os.environ.get("PORT", 5000))
-    # debug=True only if we are NOT on the cloud
-    app.run(debug=not IS_CLOUD, host="0.0.0.0", port=port)
+    try:
+        port = int(os.environ.get("PORT", 5000))
+        logger.info(f"Attempting to start on port {port}...")
+        app.run(debug=not IS_CLOUD, host="0.0.0.0", port=port)
+    except Exception:
+        # This will print the EXACT error and the line number to your terminal
+        print("\n" + "="*50)
+        print("CRITICAL STARTUP ERROR DETECTED:")
+        print("="*50)
+        traceback.print_exc() 
+        print("="*50 + "\n")

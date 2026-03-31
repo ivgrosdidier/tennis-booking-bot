@@ -1,13 +1,13 @@
 <div class="navbar">
-    <a href="{{ url_for('dashboard') }}">
+    <a href="{{ url_for('dashboard.dashboard') }}">
         <img class="logo-img" src="{{ url_for('static', filename='images/bot-logo.png') }}" />
     </a>
     <span class="hamburger">&#9776;</span> <!-- Hamburger Icon -->
     <div class="navbar-right" id="navbarRight">
         <span class="closebtn">&times;</span>
-        <a href="{{ url_for('dashboard') }}">BookingBot HQ</a>
-        <a href="{{ url_for('instructions') }}">How it Works</a>
-        <a href="{{ url_for('settings') }}">Privacy</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <a href="{{ url_for('dashboard.dashboard') }}">BookingBot HQ</a>
+        <a href="{{ url_for('auth.instructions') }}">How it Works</a>
+        <a href="{{ url_for('settings.settings') }}">Privacy</a>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
     </div>
 </div>
