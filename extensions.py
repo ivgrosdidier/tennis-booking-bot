@@ -1,6 +1,6 @@
 import os, json, sys, logging, firebase_admin
 from firebase_admin import credentials, firestore
-from cryptography.fernet import Fernet
+from flask import session
 from config import Config, IS_DEV, IS_CLOUD
 from functools import wraps
 
