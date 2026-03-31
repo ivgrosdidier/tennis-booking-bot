@@ -1,8 +1,9 @@
 import os, json, sys, logging, firebase_admin
 from firebase_admin import credentials, firestore
-from flask import session
-from config import Config, IS_DEV, IS_CLOUD
+from flask import session, redirect, url_for 
 from functools import wraps
+from cryptography.fernet import Fernet
+from config import Config, IS_DEV, IS_CLOUD
 
 # logging
 def get_logger(name):
@@ -45,13 +46,8 @@ else:
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-# fernet encryption
-fernet = None 
-
-def init_fernet(key):
-    global fernet
-    from cryptography.fernet import Fernet
-    fernet = Fernet(key.encode())
+# fernet encryption initialized at import time 
+fernet = Fernet(Config.FERNET_KEY.encode())
 
 # helper functions 
 def get_current_uid() -> str:
