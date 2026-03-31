@@ -1,4 +1,3 @@
-from functools import wraps
 from flask import Blueprint, redirect, render_template, request, make_response, session, url_for
 from firebase_admin import auth
 from extensions import get_logger

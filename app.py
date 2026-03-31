@@ -7,12 +7,12 @@ from extensions import IS_CLOUD, IS_DEV, get_logger # Use the central logger log
 logger = get_logger("app_root")
 logger.info(f"App started — IS_CLOUD={IS_CLOUD} IS_DEV={IS_DEV}")
 
-# 1. ENVIRONMENT CONFIG
+# 1. env config
 # Use the centralized IS_CLOUD from extensions
 if not IS_CLOUD:
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-# 2. APP INITIALIZATION
+# initialize flask app
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -21,12 +21,13 @@ from routes import all_blueprints
 for bp in all_blueprints:
     app.register_blueprint(bp)
 
-# 5. ROUTES
+# routes
 @app.route('/')
 def home():
     return redirect(url_for('auth.login'))
 
-# 6. ENTRY POINT
+# entry point
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080)) # Cloud Run sets this automatically
+    # Cloud Run provides the PORT env var; default to 8080 for local testing
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)

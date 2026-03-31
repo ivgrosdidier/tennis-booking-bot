@@ -2,33 +2,11 @@ import random
 import string
 from flask import Blueprint, request, redirect, url_for, flash
 from extensions import db
-from helpers.players import check_name_in_club_directory
+from helpers.players import check_name_in_club_directory, partners_ref, check_duplicate_name, check_duplicate_nick
 from extensions import db, auth_required, get_current_uid, get_logger
 
 logger = get_logger(__name__)
-
 partners_bp = Blueprint("partners", __name__)
-
-def _partners_ref(uid: str):
-    """Shorthand for the partners subcollection reference."""
-    return db.collection("users").document(uid).collection("partners")
- 
- 
-def _check_duplicate_name(ref, full_name: str, exclude_id: str = None) -> bool:
-    """Returns True if full_name already exists (excluding current doc if editing)."""
-    for doc in ref.where("full_name", "==", full_name).get():
-        if doc.id != exclude_id:
-            return True
-    return False
- 
- 
-def _check_duplicate_nick(ref, nickname: str, exclude_id: str = None) -> bool:
-    """Returns True if nickname already exists (excluding current doc if editing)."""
-    for doc in ref.where("nickname", "==", nickname).get():
-        if doc.id != exclude_id:
-            return True
-    return False
-
 
 @partners_bp.route("/add-partner", methods=["POST"])
 @auth_required
@@ -45,13 +23,13 @@ def add_partner():
         flash(f'"{full_name}" not found in club directory. Please check the spelling.', "error")
         return redirect(url_for("dashboard.dashboard"))
  
-    ref = _partners_ref(uid)
+    ref = partners_ref(uid)
  
-    if _check_duplicate_name(ref, full_name):
+    if check_duplicate_name(ref, full_name):
         flash(f'"{full_name}" already has a nickname. Edit the existing entry instead.', "error")
         return redirect(url_for("dashboard.dashboard"))
  
-    if _check_duplicate_nick(ref, nickname):
+    if check_duplicate_nick(ref, nickname):
         flash("Nickname already exists. Choose a different one.", "error")
         return redirect(url_for("dashboard.dashboard"))
  
@@ -81,13 +59,13 @@ def edit_partner(partner_id):
         flash(f'"{new_name}" not found in club directory. Please check the spelling.', "error")
         return redirect(url_for("dashboard.dashboard"))
  
-    ref = _partners_ref(uid)
+    ref = partners_ref(uid)
 
-    if _check_duplicate_name(ref, new_name, exclude_id=partner_id):
+    if check_duplicate_name(ref, new_name, exclude_id=partner_id):
         flash(f'"{new_name}" already has a nickname. Edit the existing entry instead.', "error")
         return redirect(url_for("dashboard.dashboard"))
  
-    if _check_duplicate_nick(ref, new_nick, exclude_id=partner_id):
+    if check_duplicate_nick(ref, new_nick, exclude_id=partner_id):
         flash("Nickname already in use by another partner.", "error")
         return redirect(url_for("dashboard.dashboard"))
  
@@ -107,7 +85,7 @@ def edit_partner(partner_id):
 def delete_partner(partner_id):
     uid = get_current_uid()
     try:
-        _partners_ref(uid).document(partner_id).delete()
+        partners_ref(uid).document(partner_id).delete()
         flash("Partner removed.", "success")
         logger.info(f"Partner deleted uid={uid} partner_id={partner_id}")
     except Exception as e:
