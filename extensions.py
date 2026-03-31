@@ -3,7 +3,7 @@ from firebase_admin import credentials, firestore
 from flask import session, redirect, url_for 
 from functools import wraps
 from cryptography.fernet import Fernet
-from config import Config, IS_DEV, IS_CLOUD
+from config import Config, IS_DEV
 
 # logging
 def get_logger(name):
@@ -47,7 +47,12 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # fernet encryption initialized at import time 
-fernet = Fernet(Config.FERNET_KEY.encode())
+try:
+    fernet = Fernet(Config.FERNET_KEY.encode())
+except Exception as e:
+    # This will give you a MUCH better log message if it fails again
+    print(f"CRITICAL: Fernet Key Initialization Failed. Error: {e}")
+    raise
 
 # helper functions 
 def get_current_uid() -> str:
