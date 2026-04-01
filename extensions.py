@@ -3,7 +3,7 @@ from firebase_admin import credentials, firestore
 from flask import session, redirect, url_for 
 from functools import wraps
 from cryptography.fernet import Fernet
-from config import Config, IS_DEV
+from config import Config, IS_DEV, IS_CLOUD
 
 # logging
 def get_logger(name):

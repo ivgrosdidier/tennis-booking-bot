@@ -7,7 +7,6 @@ from config import Config
 logger = get_logger(__name__)
 credentials_bp = Blueprint("credentials", __name__)
 
-
 def test_login_credentials(username: str, password: str) -> tuple[bool, str]:
     """
     Attempts a real login against the club booking system.

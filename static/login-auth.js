@@ -63,19 +63,48 @@ async function ensureUserDocument(user) {
     try {
         const userRef = doc(db, "users", user.uid)
         const userSnap = await getDoc(userRef)
+        const exists = userSnap.exists()
+        const existingData = exists ? userSnap.data() : {}
 
-        if (!userSnap.exists()) {
-            await setDoc(userRef, {
-                created_at: new Date().toISOString().split('T')[0],
-                email: user.email,
-                autobook_enabled: false,
-                google_calendar_connected: false,
-                club_profile_connected: false,
-                user_id: user.uid
-            })
-            console.log("[Firestore] New user document created for:", user.email)
-        } else {
-            console.log("[Firestore] Existing user document found for:", user.email)
+        const updateData = {}
+
+        // 1. Ensure email is present (gets it from the Google/Auth account)
+        if (!existingData.email && user.email) {
+            updateData.email = user.email
+        }
+
+        // 2. Ensure full_name is present (captured from Google/Auth)
+        if (!existingData.full_name && user.displayName) {
+            updateData.full_name = user.displayName
+        }
+
+        // 3. Ensure created_at is present
+        // We use user.metadata.creationTime to get the actual date the account was born
+        if (!existingData.created_at) {
+            const creationTime = user.metadata.creationTime 
+                ? new Date(user.metadata.creationTime).toISOString().split('T')[0] 
+                : new Date().toISOString().split('T')[0]
+            updateData.created_at = creationTime
+        }
+
+        // 4. Ensure mandatory fields exist (only if this is a brand new doc or they are missing)
+        if (!exists || !existingData.user_id) {
+            updateData.user_id = user.uid
+            
+            if (existingData.autobook_enabled === undefined) 
+                updateData.autobook_enabled = false
+            
+            if (existingData.google_calendar_connected === undefined) 
+                updateData.google_calendar_connected = false
+            
+            if (existingData.club_profile_connected === undefined) 
+                updateData.club_profile_connected = false
+        }
+
+        // Only perform a database write if we actually found missing data
+        if (Object.keys(updateData).length > 0) {
+            await setDoc(userRef, updateData, { merge: true })
+            console.log(`[Firestore] ${exists ? 'Updated' : 'Created'} user doc for:`, user.email)
         }
     } catch (error) {
         console.error("[Firestore] Failed to ensure user document:", error.code, error.message)
@@ -211,5 +240,3 @@ function clearAuthFields() {
 	clearInputField(emailInputEl)
 	clearInputField(passwordInputEl)
 }
-
-

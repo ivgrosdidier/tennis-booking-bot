@@ -491,6 +491,7 @@ input, button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  z-index: 1
 }
 
 .toggle-label {

@@ -47,7 +47,6 @@ def add_partner():
  
     return redirect(url_for("dashboard.dashboard"))
  
- 
 @partners_bp.route("/edit-partner/<partner_id>", methods=["POST"])
 @auth_required
 def edit_partner(partner_id):
