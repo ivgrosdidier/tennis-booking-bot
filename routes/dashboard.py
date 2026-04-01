@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from extensions import db, auth_required, get_current_uid, get_logger
+from helpers.players import get_sorted_player_names
 
 logger = get_logger(__name__)
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -15,6 +16,8 @@ def dashboard():
         partners_docs = db.collection("users").document(uid).collection("partners").get()
         partners = [{"id": doc.id, **doc.to_dict()} for doc in partners_docs]
 
+        all_players = get_sorted_player_names()
+
         logger.debug(f"Dashboard loaded uid={uid} partners={len(partners)}")
     except Exception as e:
         logger.error(f"Dashboard load failed uid={uid}: {e}")
@@ -26,6 +29,7 @@ def dashboard():
         club_profile_connected    = data.get("club_profile_connected", False),
         google_calendar_connected = data.get("google_calendar_connected", False),
         partners                  = partners,
+        all_players              = all_players,
     )
 
 

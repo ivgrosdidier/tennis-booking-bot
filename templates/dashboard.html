@@ -135,7 +135,8 @@
 
               <form method="POST" action="{{ url_for('partners.add_partner') }}" class="stack-form" style="margin-bottom: 2rem;">
                 <div style="display: flex; gap: 10px;">
-                  <input type="text" name="full_name" placeholder="Full Name" required style="text-align: left;">
+                  <input type="text" name="full_name" placeholder="Full Name" class="searchable-input" list="player-options" placeholder="Search for a partner..." required style="text-align: left;">
+                  <datalist id="player-options">{% for name in all_players %} <option value="{{ name }}">{% endfor %}</datalist>
                   <input type="text" name="nickname" placeholder="Nickname" required style="text-align: left;">
                 </div>
                 <button type="submit" class="primary-button">Add Partner</button>

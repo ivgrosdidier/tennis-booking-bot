@@ -429,6 +429,14 @@ input, button {
   text-align: left;
 }
 
+.searchable-input {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+  background-repeat: no-repeat;
+  background-position: 12px center;
+  padding-left: 35px !important;
+  border: 2px solid var(--navbar-color) !important;
+}
+
 .stack-form button,
 .primary-button,
 .secondary-button {
@@ -491,7 +499,6 @@ input, button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  z-index: 1
 }
 
 .toggle-label {
@@ -817,7 +824,7 @@ footer {
         padding: 0;
         padding-bottom: 40rem;
         margin: 0;
-        z-index: 1000;
+        z-index: 10000;
     }
 
     .navbar-right a {
@@ -874,7 +881,7 @@ footer {
         font-size: 3rem;
         cursor: pointer;
         color: black;
-        z-index: 1001;
+        z-index: 10001;
     }
 
     .simple-footer {

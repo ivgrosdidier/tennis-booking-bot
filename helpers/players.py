@@ -67,6 +67,11 @@ def get_club_players() -> dict:
 
     return _players_cache
 
+def get_sorted_player_names() -> list[str]:
+    """Returns a list of all player names, sorted alphabetically."""
+    players = get_club_players()
+    return sorted(list(players.keys()))
+
 def check_name_in_club_directory(full_name: str) -> bool:
     players = get_club_players()
     search_term = full_name.strip().title()
