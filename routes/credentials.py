@@ -1,7 +1,7 @@
 import requests
 from flask import Blueprint, request, redirect, url_for, flash
 from extensions import db, auth_required, get_current_uid, get_logger
-from helpers.crypto import encrypt_string
+from helpers.crypto import encrypt_string, decrypt_string
 from config import Config
 
 logger = get_logger(__name__)
@@ -41,29 +41,51 @@ def save_tennis_credentials():
     uid      = get_current_uid()
     username = request.form.get("tennis_username", "").strip()
     password = request.form.get("tennis_password", "").strip()
+    
+    # Detect if the password is just the UI mask (e.g. "*******")
+    is_masked = all(c == '*' for c in password) and len(password) > 0
 
     if not username or not password:
         flash("Please enter both username and password.", "error")
         return redirect(url_for("dashboard.dashboard"))
 
+    # If masked, fetch the real password from Firestore to perform the test login
+    if is_masked:
+        user_doc = db.collection("users").document(uid).get()
+        existing_data = user_doc.to_dict() if user_doc.exists else {}
+        encrypted_pw = existing_data.get("tennis_password_encrypted")
+        
+        if encrypted_pw:
+            try:
+                password = decrypt_string(encrypted_pw)
+            except Exception as e:
+                logger.error(f"Failed to decrypt existing password for test: {e}")
+                flash("Session error. Please re-enter your password.", "error")
+                return redirect(url_for("dashboard.dashboard"))
+
     is_valid, message = test_login_credentials(username, password)
 
     if not is_valid:
+        # Update only the connection status. We keep the username strings 
+        # so the user can see what they typed and fix typos.
         db.collection("users").document(uid).set({
-            "tennis_username_encrypted": None,
-            "tennis_password_encrypted": None,
-            "club_profile_connected":    False,
+            "club_profile_connected": False,
         }, merge=True)
         flash(f"Tennis login failed: {message}", "error")
         logger.warning(f"Credential test failed uid={uid}: {message}")
         return redirect(url_for("dashboard.dashboard"))
 
     try:
-        db.collection("users").document(uid).set({
-            "tennis_username_encrypted": encrypt_string(username),
-            "tennis_password_encrypted": encrypt_string(password),
+        update_data = {
+            "tennis_username":           username,
             "club_profile_connected":    True,
-        }, merge=True)
+        }
+        
+        # Only update the encrypted password if the user actually typed a new one
+        if not is_masked:
+            update_data["tennis_password_encrypted"] = encrypt_string(password)
+
+        db.collection("users").document(uid).set(update_data, merge=True)
         flash("Tennis credentials saved.", "success")
         logger.info(f"Credentials saved uid={uid}")
     except Exception as e:

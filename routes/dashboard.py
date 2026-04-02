@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from extensions import db, auth_required, get_current_uid, get_logger
 from helpers.players import get_sorted_player_names
+from helpers.crypto import decrypt_string
 
 logger = get_logger(__name__)
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -13,23 +14,39 @@ def dashboard():
         user_doc = db.collection("users").document(uid).get()
         data = user_doc.to_dict() if user_doc.exists else {}
 
+        # Prepare credential display data
+        tennis_username = data.get("tennis_username", "")
+        encrypted_pw = data.get("tennis_password_encrypted", "")
+        password_mask = "" # Default to empty if no password exists
+        
+        if encrypted_pw:
+            try:
+                # Decrypt only to get the character count for the UI mask
+                raw_pw = decrypt_string(encrypted_pw)
+                password_mask = "*" * len(raw_pw)
+            except Exception:
+                password_mask = "********"
+
         partners_docs = db.collection("users").document(uid).collection("partners").get()
         partners = [{"id": doc.id, **doc.to_dict()} for doc in partners_docs]
 
         all_players = get_sorted_player_names()
-
+        
         logger.debug(f"Dashboard loaded uid={uid} partners={len(partners)}")
     except Exception as e:
         logger.error(f"Dashboard load failed uid={uid}: {e}")
-        data, partners = {}, []
+        data, partners, all_players = {}, [], []
 
     return render_template(
         "dashboard.html",
         autobook_enabled          = data.get("autobook_enabled", False),
         club_profile_connected    = data.get("club_profile_connected", False),
         google_calendar_connected = data.get("google_calendar_connected", False),
+        google_calendar_name      = data.get("google_calendar_name", "TennisBookingBot"),
+        tennis_username           = tennis_username,
+        password_mask             = password_mask,
         partners                  = partners,
-        all_players              = all_players,
+        all_players               = all_players,
     )
 
 

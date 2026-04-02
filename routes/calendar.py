@@ -1,12 +1,17 @@
+import os
 from flask import Blueprint, request, redirect, url_for, flash, session
 from googleapiclient.discovery import build
 from extensions import db, auth_required, get_current_uid, get_logger
 from helpers.crypto import encrypt_string
 from helpers.google_cal import build_google_flow
-from config import Config
+from config import Config, IS_DEV
 
 logger = get_logger(__name__)
 calendar_bp = Blueprint("calendar", __name__)
+
+# Allow OAuth to work over HTTP for local development
+if IS_DEV:
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
 @calendar_bp.route("/connect-google-calendar", methods=["POST"])
@@ -16,7 +21,13 @@ def connect_google_calendar():
     session["requested_calendar_name"] = calendar_name
 
     flow = build_google_flow()
+    
+    # Use the Config variable as the absolute Source of Truth.
+    # This prevents the app from sending "revision" or "internal" URLs 
+    # that haven't been whitelisted in the Google Cloud Console.
     flow.redirect_uri = Config.GOOGLE_REDIRECT_URI
+
+    logger.debug(f"Generated redirect_uri for authorization: {flow.redirect_uri}")
 
     authorization_url, state = flow.authorization_url(
         access_type="offline",
@@ -37,7 +48,15 @@ def oauth2callback():
     verifier = session.get("google_oauth_verifier")
     calendar_name = session.get("requested_calendar_name", Config.DEFAULT_CALENDAR_NAME)
 
-    if not state:
+    # Log state information for debugging
+    url_state = request.args.get("state")
+    logger.debug(f"State Check - Session: {state}, URL: {url_state}")
+
+    if not state or state != url_state:
+        reason = "missing from session" if not state else "mismatch with URL"
+        logger.error(f"OAuth callback failed uid={uid}: state {reason}")
+        if not state:
+            logger.debug(f"Available session keys: {list(session.keys())}")
         flash("Google Calendar connection failed. Please try again.", "error")
         return redirect(url_for("dashboard.dashboard"))
 
@@ -52,7 +71,15 @@ def oauth2callback():
     try:
         flow = build_google_flow(state=state)
         flow.redirect_uri = Config.GOOGLE_REDIRECT_URI
-        flow.fetch_token(authorization_response=request.url, code_verifier=verifier)
+        logger.debug(f"Generated redirect_uri for token exchange: {flow.redirect_uri}")
+        
+        # Cloud Run (behind a Load Balancer) often reports request.url as http.
+        # Google requires the authorization_response to match the https redirect_uri exactly.
+        authorization_response = request.url
+        if not IS_DEV and authorization_response.startswith("http:"):
+            authorization_response = authorization_response.replace("http:", "https:", 1)
+
+        flow.fetch_token(authorization_response=authorization_response, code_verifier=verifier)
         creds = flow.credentials
 
         service   = build("calendar", "v3", credentials=creds)

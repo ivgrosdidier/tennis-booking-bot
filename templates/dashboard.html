@@ -75,10 +75,23 @@
 
               <form method="POST" action="{{ url_for('credentials.save_tennis_credentials') }}" class="stack-form">
                 <label for="tennis_username">Club username</label>
-                <input type="text" id="tennis_username" name="tennis_username" required>
+                <input 
+                  type="text" 
+                  id="tennis_username" 
+                  name="tennis_username" 
+                  value="{{ tennis_username }}" 
+                  placeholder="Email or Username"
+                  required
+                >
 
                 <label for="tennis_password">Club password</label>
-                <input type="password" id="tennis_password" name="tennis_password" required>
+                <input 
+                  type="password" 
+                  id="tennis_password" 
+                  name="tennis_password" 
+                  value="{{ password_mask }}" 
+                  required
+                >
 
                 <button type="submit">Save club login</button>
 
