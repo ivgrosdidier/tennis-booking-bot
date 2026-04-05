@@ -21,10 +21,6 @@ def connect_google_calendar():
     session["requested_calendar_name"] = calendar_name
 
     flow = build_google_flow()
-    
-    # Use the Config variable as the absolute Source of Truth.
-    # This prevents the app from sending "revision" or "internal" URLs 
-    # that haven't been whitelisted in the Google Cloud Console.
     flow.redirect_uri = Config.GOOGLE_REDIRECT_URI
 
     logger.debug(f"Generated redirect_uri for authorization: {flow.redirect_uri}")

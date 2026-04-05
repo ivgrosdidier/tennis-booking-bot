@@ -4,7 +4,7 @@ from firebase_admin import credentials, firestore, initialize_app
 # 1. Setup
 cred = credentials.Certificate("firebase-auth.json")
 initialize_app(cred)
-db = firestore.client()
+db = firestore.client(database_id="dev-db")
 
 # 2. Read your JSON
 with open('data/players.json', encoding='utf-8') as f:
