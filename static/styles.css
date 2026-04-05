@@ -723,8 +723,11 @@ input, button {
 }
 
 .cta-row {
-    margin: 4rem 0;
-    text-align: center;
+    display: flex;
+    justify-content: center; /* Horizontal center */
+    align-items: center;     /* Vertical center */
+    width: 100%;
+    padding: 20px 0;
 }
 
 /* === Example template === */
