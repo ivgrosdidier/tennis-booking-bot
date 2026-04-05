@@ -50,8 +50,7 @@ db = firestore.client()
 try:
     fernet = Fernet(Config.FERNET_KEY.encode())
 except Exception as e:
-    # This will give you a MUCH better log message if it fails again
-    print(f"CRITICAL: Fernet Key Initialization Failed. Error: {e}")
+    logger.critical(f"Fernet Key Initialization Failed: {e}")
     raise
 
 # helper functions 

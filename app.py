@@ -2,6 +2,7 @@ import os
 from flask import Flask, redirect, url_for, Response
 from config import Config
 from extensions import IS_CLOUD, IS_DEV, get_logger # Use the central logger logic
+from routes import all_blueprints
 
 # logging
 logger = get_logger("app_root")
@@ -17,7 +18,6 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # import blueprints 
-from routes import all_blueprints
 for bp in all_blueprints:
     app.register_blueprint(bp)
 
@@ -26,29 +26,13 @@ for bp in all_blueprints:
 def home():
     return redirect(url_for('auth.login'))
 
-@app.route("/firebase-config.js")
+@app.route("/static/firebase-config.js")
 def firebase_config_js():
-    config = {
-        "apiKey":            os.environ.get("FIREBASE_API_KEY"),
-        "authDomain":        os.environ.get("FIREBASE_AUTH_DOMAIN"),
-        "projectId":         os.environ.get("FIREBASE_PROJECT_ID"),
-        "storageBucket":     os.environ.get("FIREBASE_STORAGE_BUCKET"),
-        "messagingSenderId": os.environ.get("FIREBASE_MESSAGING_SENDER_ID"),
-        "appId":             os.environ.get("FIREBASE_APP_ID"),
-    }
-    js = f"""
-import {{ initializeApp }} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import {{ getAuth, GoogleAuthProvider }} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import {{ getFirestore }} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
-const app = initializeApp({json.dumps(config)});
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-const db = getFirestore(app);
-
-export {{ auth, provider, db }};
-"""
-    return Response(js, mimetype="application/javascript")
+    filename = os.environ.get("FIREBASE_CONFIG_FILE", "firebase-config.js")
+    filepath = os.path.join(app.static_folder, filename)
+    with open(filepath, "r") as f:
+        content = f.read()
+    return Response(content, mimetype="application/javascript")
 
 # entry point
 if __name__ == "__main__":
