@@ -1,9 +1,10 @@
-# This file contains the firebase configuration details.
+import os
+
 firebaseConfig = {
-  'apiKey': "AIzaSyDaty9NLJFbFjb0QpLxHeGnx2JllctPBAE",
-  'authDomain': "tennis-booking-caadb.firebaseapp.com",
-  'projectId': "tennis-booking-caadb",
-  'storageBucket': "tennis-booking-caadb.firebasestorage.app",
-  'messagingSenderId': "6814010094",
-  'appId': "1:6814010094:web:4ab67c40adc60d9cc241ff"
+    'apiKey':            os.environ.get("FIREBASE_API_KEY"),
+    'authDomain':        os.environ.get("FIREBASE_AUTH_DOMAIN"),
+    'projectId':         os.environ.get("FIREBASE_PROJECT_ID"),
+    'storageBucket':     os.environ.get("FIREBASE_STORAGE_BUCKET"),
+    'messagingSenderId': os.environ.get("FIREBASE_MESSAGING_SENDER_ID"),
+    'appId':             os.environ.get("FIREBASE_APP_ID"),
 }
