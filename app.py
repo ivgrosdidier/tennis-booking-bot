@@ -2,6 +2,7 @@ import os
 from flask import Flask, redirect, url_for
 from config import Config
 from extensions import IS_CLOUD, IS_DEV, get_logger # Use the central logger logic
+from routes import all_blueprints
 
 # logging
 logger = get_logger("app_root")
@@ -17,7 +18,6 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # import blueprints 
-from routes import all_blueprints
 for bp in all_blueprints:
     app.register_blueprint(bp)
 

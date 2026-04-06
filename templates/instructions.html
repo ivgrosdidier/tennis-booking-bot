@@ -8,7 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" >
 
-  <title>{% block title %}BookingBot | Instructions{% endblock %}</title>
+  <title>Booking Bot | Instructions</title>
+
 
 
   </head>
@@ -131,7 +132,8 @@
 
           </div>
         </div>
-
+  
+        <!-- CTA -->
         <div class="cta-row" style="display: flex; justify-content: center; width: 100%; margin-top: 2rem;">
           {% if session.get('user') %}
             <a href="{{ url_for('dashboard.dashboard') }}" class="primary-button" style="text-decoration:none; padding: 0.85rem 2rem; border-radius: 10px; background: #192d1c; color: white; font-weight: 600; font-size: 1rem;">
@@ -142,9 +144,8 @@
               Go to Login or Sign Up
             </a>
           {% endif %}
-          </div>
-
-  
+        </div>
+         
       </div>
     </main>
 
