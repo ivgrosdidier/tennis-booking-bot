@@ -1,4 +1,5 @@
 firebase-auth.json
+firebase-auth-dev.json
 .env
 data/
 scripts/

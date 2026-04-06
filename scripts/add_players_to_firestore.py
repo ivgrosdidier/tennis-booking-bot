@@ -2,7 +2,7 @@ import json
 from firebase_admin import credentials, firestore, initialize_app
 
 # 1. Setup
-cred = credentials.Certificate("firebase-auth.json")
+cred = credentials.Certificate("firebase-auth-dev.json")
 initialize_app(cred)
 db = firestore.client()
 
