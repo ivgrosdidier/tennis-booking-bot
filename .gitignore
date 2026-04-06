@@ -7,3 +7,4 @@ scripts/
 __pycache__/
 .pytest_cache/
 *.pyc
+routes/__pycache__/

@@ -5,13 +5,12 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.9.0/firebase
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCor_mQHUgfjjNxXjOvTx2vfeSo9PlEklY",
-  authDomain: "tennis-booking-dev-29d17.firebaseapp.com",
-  projectId: "tennis-booking-dev-29d17",
-  storageBucket: "tennis-booking-dev-29d17.firebasestorage.app",
-  messagingSenderId: "254873357384",
-  appId: "1:254873357384:web:04fe26b00ce0e28971dc7d",
-  measurementId: "G-HBBLCF156V"
+  apiKey: "AIzaSyDaty9NLJFbFjb0QpLxHeGnx2JllctPBAE",
+  authDomain: "tennis-booking-caadb.firebaseapp.com",
+  projectId: "tennis-booking-caadb",
+  storageBucket: "tennis-booking-caadb.firebasestorage.app",
+  messagingSenderId: "6814010094",
+  appId: "1:6814010094:web:4ab67c40adc60d9cc241ff"
 };
 
   // Initialize Firebase
