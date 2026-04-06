@@ -25,6 +25,8 @@ class Config:
 
     # Club
     CLUB_LOGIN_URL = require_env("CLUB_LOGIN_URL")
+    TENNIS_USER = require_env("TENNIS_USERNAME")
+    TENNIS_PASS = require_env("TENNIS_PASSWORD")
 
     # Session config
     SESSION_COOKIE_SECURE = IS_CLOUD
