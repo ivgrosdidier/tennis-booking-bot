@@ -23,6 +23,14 @@ class Config:
     GOOGLE_CLIENT_SECRET = require_env("GOOGLE_CLIENT_SECRET")
     GOOGLE_REDIRECT_URI = require_env("GOOGLE_REDIRECT_URI")
 
+    # Firebase Web SDK (Frontend)
+    FB_API_KEY = require_env("FB_API_KEY")
+    FB_AUTH_DOMAIN = require_env("FB_AUTH_DOMAIN")
+    FB_PROJECT_ID = require_env("FB_PROJECT_ID")
+    FB_STORAGE_BUCKET = require_env("FB_STORAGE_BUCKET")
+    FB_MESSAGING_SENDER_ID = require_env("FB_MESSAGING_SENDER_ID")
+    FB_APP_ID = require_env("FB_APP_ID")
+
     # Club
     CLUB_LOGIN_URL = require_env("CLUB_LOGIN_URL")
 
@@ -45,4 +53,3 @@ class Config:
     # CLOUD_TASKS_QUEUE = os.getenv("CLOUD_TASKS_QUEUE")
     # CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL")
     # SERVICE_ACCOUNT_EMAIL = os.getenv("SERVICE_ACCOUNT_EMAIL")
-

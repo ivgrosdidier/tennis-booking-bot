@@ -1,5 +1,5 @@
 import os
-from flask import Flask, redirect, url_for, Response
+from flask import Flask, redirect, url_for
 from config import Config
 from extensions import IS_CLOUD, IS_DEV, get_logger # Use the central logger logic
 from routes import all_blueprints
@@ -25,14 +25,6 @@ for bp in all_blueprints:
 @app.route('/')
 def home():
     return redirect(url_for('auth.login'))
-
-@app.route("/static/firebase-config.js")
-def firebase_config_js():
-    filename = os.environ.get("FIREBASE_CONFIG_FILE", "firebase-config.js")
-    filepath = os.path.join(app.static_folder, filename)
-    with open(filepath, "r") as f:
-        content = f.read()
-    return Response(content, mimetype="application/javascript")
 
 # entry point
 if __name__ == "__main__":
