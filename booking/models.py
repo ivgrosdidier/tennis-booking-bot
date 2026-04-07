@@ -15,6 +15,7 @@ class BookingRequest:
         # Who is booking
         self.user_id = user_id
         self.user_email = None          # set by parse_events
+        self.tennis_site_name = None    # set by parse_events — name as it appears on the club site
         self.tennis_username = None     # set by parse_events
         self.tennis_password = None     # set by parse_events
         self.google_cal_id = None       # set by parse_events (for calendar update)

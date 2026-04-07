@@ -144,6 +144,7 @@ def parse_events(users):
 
             # Attach user credentials so booking workers are self-contained
             req.user_email = user['email']
+            req.tennis_site_name = user.get('tennis_site_name') or user['user_id']
             req.tennis_username = user['tennis_username']
             req.tennis_password = user['tennis_password']
             req.google_cal_id = user['google_cal_id']

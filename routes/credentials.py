@@ -2,6 +2,7 @@ import requests
 from flask import Blueprint, request, redirect, url_for, flash
 from extensions import db, auth_required, get_current_uid, get_logger
 from helpers.crypto import encrypt_string, decrypt_string
+from helpers.players import resolve_tennis_site_name
 from config import Config
 
 logger = get_logger(__name__)
@@ -80,7 +81,7 @@ def save_tennis_credentials():
             "tennis_username":           username,
             "club_profile_connected":    True,
         }
-        
+
         # Only update the encrypted password if the user actually typed a new one
         if not is_masked:
             update_data["tennis_password_encrypted"] = encrypt_string(password)
@@ -91,5 +92,22 @@ def save_tennis_credentials():
     except Exception as e:
         logger.error(f"Failed to save credentials uid={uid}: {e}")
         flash("Failed to save credentials. Please try again.", "error")
+        return redirect(url_for("dashboard.dashboard"))
+
+    # Resolve tennis_site_name if not already set.
+    # Reads the user doc to get full_name and current tennis_site_name.
+    # Non-critical — a failure here doesn't block the credential save.
+    try:
+        user_doc = db.collection("users").document(uid).get()
+        user_data = user_doc.to_dict() or {}
+        if not user_data.get("tennis_site_name"):
+            resolve_tennis_site_name(
+                user_id=uid,
+                email=user_data.get("email", ""),
+                full_name=user_data.get("full_name", ""),
+                tennis_username=username,
+            )
+    except Exception as e:
+        logger.error(f"Failed to resolve tennis_site_name for {uid}: {e}")
 
     return redirect(url_for("dashboard.dashboard"))

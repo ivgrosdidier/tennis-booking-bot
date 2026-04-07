@@ -1,9 +1,8 @@
 # database queries
 
 from extensions import db, get_logger
-from booking.models import BookingRequest
-import logging
 from helpers.crypto import decrypt_string
+from helpers.players import resolve_tennis_site_name
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 logger = get_logger(__name__)
@@ -35,10 +34,26 @@ def get_eligible_users():
             for p_doc in partners_ref.stream():
                 partners[p_doc.id] = p_doc.to_dict()
 
+            tennis_site_name = data.get('tennis_site_name')
+
+            # Lazy backfill for existing users who don't have tennis_site_name yet.
+            # Runs once, writes result to Firestore, never runs again for this user.
+            if not tennis_site_name:
+                try:
+                    tennis_site_name = resolve_tennis_site_name(
+                        user_id=user_id,
+                        email=data.get('email', ''),
+                        full_name=data.get('full_name', ''),
+                        tennis_username=data.get('tennis_username', ''),
+                    )
+                except Exception as e:
+                    logger.error(f"Could not resolve tennis_site_name for {user_id}: {e}")
+
             # construct clean data object
             user_packet = {
                 "user_id": data.get('user_id'),
                 'email': data.get('email'),
+                "tennis_site_name": tennis_site_name,
                 "tennis_username": data.get('tennis_username'),
                 "tennis_password": decrypt_string(tennis_pw_enc),
                 "google_refresh_token": decrypt_string(google_rt_enc),
