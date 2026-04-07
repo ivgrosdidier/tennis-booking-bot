@@ -1,8 +1,14 @@
 # dedupes and assigns courts 
 
-import logging
+from extensions import get_logger
 
 logger = logging.getLogger(__name__)
+
+# Normalize opponent names (alphabetical order for consistency)
+def get_booking_key(req):
+    names = sorted([req.user_name, req.opponent])  # Both player names
+    return (req.date, req.start_time, tuple(names))
+
 
 def deduplicate_and_assign(requests, available_courts):
     """
@@ -13,7 +19,7 @@ def deduplicate_and_assign(requests, available_courts):
     # Group by (date, time, opponent)
     grouped = {}
     for req in requests:
-        key = (req.date, req.time, req.opponent.lower())
+        key = get_booking_key(req)
         if key not in grouped:
             grouped[key] = []
         grouped[key].append(req)

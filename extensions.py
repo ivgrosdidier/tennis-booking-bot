@@ -44,14 +44,14 @@ else:
     logger.info("Firebase initialized from local firebase-auth.json")
  
 firebase_admin.initialize_app(cred)
-db = firestore.client()
+# Use environment variable for DB ID and fallback to (default)
+db = firestore.client(database_id=os.getenv("FIRESTORE_DATABASE_ID", "(default)"))
 
 # fernet encryption initialized at import time 
 try:
     fernet = Fernet(Config.FERNET_KEY.encode())
 except Exception as e:
-    # This will give you a MUCH better log message if it fails again
-    print(f"CRITICAL: Fernet Key Initialization Failed. Error: {e}")
+    logger.critical(f"Fernet Key Initialization Failed: {e}")
     raise
 
 # helper functions 

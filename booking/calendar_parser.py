@@ -2,31 +2,28 @@
 
 from datetime import datetime, timedelta
 from booking.models import BookingRequest
-from booking.firestore_queries import find_player_by_email, get_user_partners
+from booking.firestore_queries import find_player_by_email
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from config import Config
-import logging
+from extensions import get_logger
 import re
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
 
 def get_calendar_events(user, target_date):
-    """Fetch events using existing Config and Refresh Token"""
+    """Fetch events for target_date using the user's stored refresh token."""
     try:
-        # 1. Leverage your existing Config for credentials
         creds = Credentials(
-            token=None,  # Access token is fetched automatically
+            token=None,
             refresh_token=user['google_refresh_token'],
             client_id=Config.GOOGLE_CLIENT_ID,
             client_secret=Config.GOOGLE_CLIENT_SECRET,
             token_uri="https://oauth2.googleapis.com/token"
         )
-
         service = build('calendar', 'v3', credentials=creds)
 
-        # 2. Setup the timeframe for the target date
-        # Note: .isoformat() + 'Z' works for UTC; adjust if using Toronto local time
         start_of_day = datetime.combine(target_date, datetime.min.time()).isoformat() + 'Z'
         end_of_day = datetime.combine(target_date, datetime.max.time()).isoformat() + 'Z'
 
@@ -38,7 +35,6 @@ def get_calendar_events(user, target_date):
             orderBy='startTime'
         ).execute()
 
-        # returns list of google cal event resources (dicts)
         return events_result.get('items', [])
 
     except Exception as e:
@@ -47,98 +43,94 @@ def get_calendar_events(user, target_date):
 
 
 def identify_opponent(event, user):
-    """Identify all opponents, handling 'GP' or 'Guest Player' specifically"""
+    """
+    Identify all opponents/partners in a calendar event.
+    Returns a comma-separated string of player names.
+    For doubles, this may include up to 3 names.
+
+    Strategies (in order):
+    0. Title contains 'GP' or 'Guest Player' + name
+    1. Attendee email matches a player in the players collection
+    2. Title or attendee matches a partner's nickname or full name
+    3. Fallback: use the event title directly
+    """
     found_opponents = []
-    # Lowercase for searching, but keep a copy for case-sensitive extraction if needed
     title_lower = event.get('summary', '').lower()
     partners = user.get('partners', {})
-    
-    # --- Strategy 0: Check for Guest Players (GP / Guest Player) ---
-    # This regex looks for 'gp' or 'guest player' followed by a name
-    # It captures the name that follows until a comma or the end of the string
-    guest_pattern = r'(?:gp|guest player)\s+([a-zA-Z]+)'
-    guest_matches = re.findall(guest_pattern, title_lower)
-    
-    for guest_name in guest_matches:
-        formatted_guest = f"Guest Player {guest_name.strip().title()}"
-        if formatted_guest not in found_opponents:
-            found_opponents.append(formatted_guest)
 
-    # --- Strategy 1: Check ALL guest emails (Skip if already found as GP) ---
-    attendees = event.get('attendees', [])
-    for attendee in attendees:
+    # Strategy 0: Guest Player prefix in title
+    guest_pattern = r'(?:gp|guest player)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)'
+    for guest_name in re.findall(guest_pattern, title_lower):
+        formatted = f"Guest Player {guest_name.strip().title()}"
+        if formatted not in found_opponents:
+            found_opponents.append(formatted)
+
+    # Strategy 1: Attendee emails in the players collection
+    for attendee in event.get('attendees', []):
         email = attendee.get('email', '')
         if email and email != user.get('email'):
             player_name = find_player_by_email(email)
             if player_name and player_name not in found_opponents:
                 found_opponents.append(player_name)
 
-    # --- Strategy 2 & 3: Check Database Partners ---
-    # We only check partners if they haven't been identified as a Guest already
-    for partner_id, partner_data in partners.items():
-        db_nickname = (partner_data.get('nickname', '') or "").lower()
-        db_full_name = (partner_data.get('full_name', '') or "").lower()
-        
+    # Strategy 2: Partner nickname or full name appears in the title
+    for partner_data in partners.values():
+        db_nickname = (partner_data.get('nickname', '') or '').lower()
+        db_full_name = (partner_data.get('full_name', '') or '').lower()
+
         if (db_nickname and db_nickname in title_lower) or \
            (db_full_name and db_full_name in title_lower):
             actual_name = partner_data.get('full_name')
-            if actual_name not in found_opponents:
+            if actual_name and actual_name not in found_opponents:
                 found_opponents.append(actual_name)
 
-    # --- Final Logic ---
     if found_opponents:
-        return ", ".join(found_opponents)
+        return ', '.join(found_opponents)
 
-    # Strategy 4: Fallback (Cleaned Title)
-    # Remove common prefix words to get a clean name
-    clean_title = title_lower.strip().title()
-    return clean_title
+    # Strategy 3: Fallback — use cleaned event title
+    return event.get('summary', '').strip()
 
 
 def parse_events(users):
+    """
+    For each eligible user, fetch their Google Calendar events 6 days from now
+    and return a list of BookingRequest objects.
+    """
     requests = []
-    # Target is 6 days from now for the booking window
     target_dt = datetime.now() + timedelta(days=6)
     target_date_str = target_dt.strftime('%Y-%m-%d')
-    
+
     for user in users:
         events = get_calendar_events(user, target_dt.date())
-        
+
         for event in events:
+            # Skip events that are already booked
             if 'Booked' in event.get('summary', ''):
                 continue
-            
+
             try:
-                # 1. Parse Start and End
-                start_str = event.get('start', {}).get('dateTime', '')
-                end_str = event.get('end', {}).get('dateTime', '')
-                
+                start_str = event['start'].get('dateTime', '')
+                end_str = event['end'].get('dateTime', '')
                 start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
                 end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
-                
-                # 2. Calculate Duration in minutes
                 duration_mins = int((end_dt - start_dt).total_seconds() / 60)
-                
                 event_date = start_dt.strftime('%Y-%m-%d')
-                event_time = start_dt.strftime('%H:%M')
+                event_time = start_dt.strftime('%H:%M')   # 24h format
                 end_time = end_dt.strftime('%H:%M')
             except Exception as e:
-                logger.error(f"Time parsing error: {e}")
-                continue
-            
-            if event_date != target_date_str:
-                continue
-            
-            # 3. Identify Opponents (supports multiple names)
-            opponent_str = identify_opponent(event, user)
-            if not opponent_str:
+                logger.error(f"Time parsing error on event '{event.get('summary')}': {e}")
                 continue
 
-            # 4. Determine Match Type
-            # If there's a comma in the string, it's more than 1 person = Doubles
-            match_type = "doubles" if "," in opponent_str else "singles"
-            
-            # 5. Create Request with new fields
+            if event_date != target_date_str:
+                continue
+
+            opponent_str = identify_opponent(event, user)
+            if not opponent_str:
+                logger.warning(f"No opponent found for event '{event.get('summary')}', skipping.")
+                continue
+
+            match_type = 'doubles' if ',' in opponent_str else 'singles'
+
             req = BookingRequest(
                 user_id=user['user_id'],
                 event_id=event.get('id'),
@@ -149,8 +141,20 @@ def parse_events(users):
                 opponent=opponent_str,
                 match_type=match_type
             )
-            req.is_creator = (event.get('organizer', {}).get('email') == user.get('email'))
-            
+
+            # Attach user credentials so booking workers are self-contained
+            req.user_email = user['email']
+            req.tennis_username = user['tennis_username']
+            req.tennis_password = user['tennis_password']
+            req.google_cal_id = user['google_cal_id']
+            req.google_refresh_token = user['google_refresh_token']
+
+            # is_creator: True if this user created the event (not just an invitee)
+            req.is_creator = (
+                event.get('organizer', {}).get('email') == user.get('email')
+            )
+
             requests.append(req)
-    
+            logger.info(f"Found event: {user['user_id']} vs {opponent_str} at {event_time} on {event_date}")
+
     return requests

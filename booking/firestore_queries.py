@@ -1,25 +1,20 @@
 # database queries
 
-from firebase_admin import firestore
+from extensions import db, get_logger
 from booking.models import BookingRequest
 import logging
 from helpers.crypto import decrypt_string
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-logger = logging.getLogger(__name__)
-db = firestore.client()
+logger = get_logger(__name__)
 
 def get_eligible_users():
     """Fetch users with autobook enabled"""
     users = []
     
-    query = db.collection('users').filter(
-        filter=FieldFilter('autobook_enabled', '==', True)
-    ).filter(
-        filter=FieldFilter('club_profile_connected', '==', True)
-    ).filter(
-        filter=FieldFilter('google_calendar_connected', '==', True)
-    )
+    query = db.collection('users').where(filter=FieldFilter('autobook_enabled', '==', True)).where(filter=FieldFilter('club_profile_connected', '==', True)).where(filter=FieldFilter('google_calendar_connected', '==', True))
+    
+    #query = db.collection('users').where('autobook_enabled', '==', True).where('club_profile_connected', '==', True).where('google_calendar_connected', '==', True)
     
     for doc in query.stream():
         data = doc.to_dict()
@@ -43,13 +38,12 @@ def get_eligible_users():
             # construct clean data object
             user_packet = {
                 "user_id": data.get('user_id'),
+                'email': data.get('email'),
                 "tennis_username": data.get('tennis_username'),
                 "tennis_password": decrypt_string(tennis_pw_enc),
                 "google_refresh_token": decrypt_string(google_rt_enc),
                 "google_cal_id": data.get('google_calendar_id'),
-                "google_cal_name": data.get('google_calendar_name'),
-                "partners": partners,
-                'email': data.get('email')
+                "partners": partners
             }
             
             users.append(user_packet)

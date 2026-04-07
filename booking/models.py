@@ -3,18 +3,40 @@
 """Data structures for booking system"""
 
 class BookingRequest:
-    """A tennis booking request"""
-    def __init__(self, user_id, event_id, date, time, opponent, court=None):
+    """
+    A tennis booking request — one per calendar event to book.
+
+    The 'opponent' field is a comma-separated string of player names.
+    For singles: "Alice Smith"
+    For doubles: "Alice Smith, Bob Jones, Carol Lee"  (up to 3 opponents)
+    The match_type ('singles' or 'doubles') is derived from how many names are in the string.
+    """
+    def __init__(self, user_id, event_id, date, start_time, end_time, duration, opponent, match_type):
+        # Who is booking
         self.user_id = user_id
-        self.event_id = event_id
-        self.date = date
-        self.time = time
-        self.opponent = opponent
-        self.court = court
+        self.user_email = None          # set by parse_events
+        self.tennis_username = None     # set by parse_events
+        self.tennis_password = None     # set by parse_events
+        self.google_cal_id = None       # set by parse_events (for calendar update)
+        self.google_refresh_token = None  # set by parse_events
+
+        # What to book
+        self.event_id = event_id        # Google Calendar event ID
+        self.date = date                # YYYY-MM-DD
+        self.start_time = start_time    # HH:MM (24h)
+        self.end_time = end_time        # HH:MM (24h)
+        self.duration = duration        # minutes
+        self.opponent = opponent        # comma-separated string, e.g. "Alice, Bob, Carol"
+        self.match_type = match_type    # 'singles' or 'doubles'
+
+        # Set during deduplication / assignment
         self.is_creator = False
+        self.court = None               # e.g. 'Court 1'
+        self.booking_href = None        # URL to follow to book the court
+
 
 class BookingResult:
-    """Result of a booking attempt"""
+    """Result of a booking attempt."""
     def __init__(self, event_id, success, court=None, error=None):
         self.event_id = event_id
         self.success = success
