@@ -32,14 +32,20 @@ class BookingRequest:
 
         # Set during deduplication / assignment
         self.is_creator = False
-        self.court = None               # e.g. 'Court 1'
-        self.booking_href = None        # URL to follow to book the court
+        self.court = None               # e.g. 'Court 1' — pre-assigned, may change at runtime
+        self.booking_href = None        # URL for the pre-assigned court
+        # Ordered list of times to attempt: [original, 1hr before, 1hr after, 2hrs after]
+        # Only times that actually have courts available. Set during assignment.
+        self.times_to_try = []
 
 
 class BookingResult:
     """Result of a booking attempt."""
-    def __init__(self, event_id, success, court=None, error=None):
+    def __init__(self, event_id, success, court=None, booked_time=None, error=None):
         self.event_id = event_id
         self.success = success
         self.court = court
+        # The time actually booked — may differ from the requested time if a
+        # fallback slot was used. Used by calendar_updater to fix the event time.
+        self.booked_time = booked_time
         self.error = error

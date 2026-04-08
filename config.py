@@ -42,11 +42,5 @@ class Config:
     SCOPES = ["https://www.googleapis.com/auth/calendar"]
     DEFAULT_CALENDAR_NAME = "TennisBookingBot"
 
-    # port 
+    # port
     PORT = int(os.getenv("PORT", 8080))
-
-    # Booking bot
-    # SCHEDULER_SECRET = os.getenv("SCHEDULER_SECRET")
-    # CLOUD_TASKS_QUEUE = os.getenv("CLOUD_TASKS_QUEUE")
-    # CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL")
-    # SERVICE_ACCOUNT_EMAIL = os.getenv("SERVICE_ACCOUNT_EMAIL")

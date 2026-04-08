@@ -11,10 +11,11 @@ def get_eligible_users():
     """Fetch users with autobook enabled"""
     users = []
     
-    query = db.collection('users').where(filter=FieldFilter('autobook_enabled', '==', True)).where(filter=FieldFilter('club_profile_connected', '==', True)).where(filter=FieldFilter('google_calendar_connected', '==', True))
-    
-    #query = db.collection('users').where('autobook_enabled', '==', True).where('club_profile_connected', '==', True).where('google_calendar_connected', '==', True)
-    
+    query = (db.collection('users')
+               .where(filter=FieldFilter('autobook_enabled', '==', True))
+               .where(filter=FieldFilter('club_profile_connected', '==', True))
+               .where(filter=FieldFilter('google_calendar_connected', '==', True)))
+
     for doc in query.stream():
         data = doc.to_dict()
         user_id = doc.id

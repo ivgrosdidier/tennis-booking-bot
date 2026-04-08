@@ -13,14 +13,14 @@ def partners_ref(uid: str):
  
 def check_duplicate_name(ref, full_name: str, exclude_id: str = None) -> bool:
     """Returns True if full_name already exists (excluding current doc if editing)."""
-    for doc in ref.where("full_name", "==", full_name).get():
+    for doc in ref.where(filter=FieldFilter("full_name", "==", full_name)).get():
         if doc.id != exclude_id:
             return True
     return False
- 
+
 def check_duplicate_nick(ref, nickname: str, exclude_id: str = None) -> bool:
     """Returns True if nickname already exists (excluding current doc if editing)."""
-    for doc in ref.where("nickname", "==", nickname).get():
+    for doc in ref.where(filter=FieldFilter("nickname", "==", nickname)).get():
         if doc.id != exclude_id:
             return True
     return False
@@ -73,22 +73,7 @@ def get_sorted_player_names() -> list[str]:
     return sorted(list(players.keys()))
 
 def check_name_in_club_directory(full_name: str) -> bool:
-    players = get_club_players()
-    search_term = full_name.strip().title()
-    
-    # Using pipe symbols | to see if there are hidden spaces
-    logger.info(f"DEBUG: Search Term is |{search_term}|")
-    
-    exists = search_term in players
-    if not exists:
-        # Show exactly what the keys look like with pipes
-        sample = [f"|{k}|" for k in list(players.keys())[:3]]
-        logger.info(f"DEBUG: Not found. Cache contains: {sample}")
-        
-    return exists
-
-def check_name_in_club_directory2(full_name: str) -> bool:
-    """Returns True if the titled name exists in the club directory."""
+    """Returns True if the title-cased name exists in the club directory."""
     return full_name.strip().title() in get_club_players()
 
 

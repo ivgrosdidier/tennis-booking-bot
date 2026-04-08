@@ -10,13 +10,6 @@ def _player_set(req):
     """
     Return the frozenset of all player names involved in this match.
     Used as a match fingerprint for deduplication.
-
-    Example singles:  {'John Smith', 'Mary Jones'}
-    Example doubles:  {'John Smith', 'Mary Jones', 'Bob Lee', 'Sue Park'}
-
-    tennis_site_name is the user's name as it appears on the club booking site
-    (same format as player names in the players collection).
-    Falls back to user_id until tennis_site_name is populated in Firestore.
     """
     user_name = req.tennis_site_name or req.user_id
     opponent_names = {n.strip() for n in req.opponent.split(',') if n.strip()}
@@ -26,25 +19,21 @@ def _player_set(req):
 def get_courts_for_slot(available_by_time, start_time, duration_mins):
     """
     Return courts available for the ENTIRE duration of a booking slot.
-
-    Example: a 90-minute booking at 10:00 requires courts free at both
-    10:00 AND 11:00. This intersects availability across all required hours.
+    A 90-minute booking at 10:00 requires courts free at both 10:00 AND 11:00.
 
     Returns: list of {'court': str, 'href': str}, sorted by court name.
     """
     start_dt = datetime.strptime(start_time, '%H:%M')
-    hours_needed = max(1, (duration_mins + 59) // 60)  # ceil to nearest hour
+    hours_needed = max(1, (duration_mins + 59) // 60)
 
     required_times = [
         (start_dt + timedelta(hours=i)).strftime('%H:%M')
         for i in range(hours_needed)
     ]
 
-    # Start with courts available at the first time slot
     first_slots = available_by_time.get(required_times[0], [])
     available = {s['court']: s['href'] for s in first_slots}
 
-    # Keep only courts also free at each subsequent hour
     for t in required_times[1:]:
         courts_at_t = {s['court'] for s in available_by_time.get(t, [])}
         available = {c: h for c, h in available.items() if c in courts_at_t}
@@ -55,20 +44,55 @@ def get_courts_for_slot(available_by_time, start_time, duration_mins):
     )
 
 
+def _fallback_times(start_time, available_by_time, duration_mins):
+    """
+    Return an ordered list of times to attempt booking, starting with the
+    requested time and expanding outward within the allowed window:
+        1. Original time (always first)
+        2. 1 hour before  (up to 1hr before allowed)
+        3. 1 hour after   (up to 2hrs after allowed)
+        4. 2 hours after
+
+    Only includes times that exist in available_by_time AND have at least one
+    court free for the full duration. Times outside 06:00-22:00 are excluded.
+    """
+    start_dt = datetime.strptime(start_time, '%H:%M')
+
+    # Order: original → 1hr before → 1hr after → 2hrs after
+    offsets_minutes = [0, -60, 60, 120]
+
+    result = []
+    for offset in offsets_minutes:
+        candidate = start_dt + timedelta(minutes=offset)
+        # Sanity-check reasonable court hours
+        if not (6 <= candidate.hour <= 22):
+            continue
+        t = candidate.strftime('%H:%M')
+        if t not in available_by_time:
+            continue
+        if get_courts_for_slot(available_by_time, t, duration_mins):
+            result.append(t)
+
+    return result
+
+
 def deduplicate_and_assign(requests, available_by_time):
     """
     Step 1 — Deduplicate:
-      Strategy A: same event_id → both users have the same Google Calendar event
-                  (one created it, the other was an invitee). Keep the creator.
-      Strategy B: same (date, start_time, player set) → both users independently
-                  created events for the same match. Keep the creator; if neither
-                  is flagged as creator, keep the first one found.
+      Strategy A: same event_id → both users have the same Google Calendar event.
+                  Keep the creator.
+      Strategy B: same (date, start_time, player set) → independently created
+                  events for the same match. Keep the creator.
 
     Step 2 — Assign courts:
-      For each unique booking, pick the first available court for the full
-      duration. No two bookings get the same court (sample without replacement).
+      For each unique booking, try the requested time first, then fallback times
+      (1hr before → 1hr after → 2hrs after). Pre-assign the first available court
+      at the best time, without replacement across requests.
 
-    Returns: list of BookingRequest with .court and .booking_href set.
+    Sets req.times_to_try (ordered list for worker to follow at runtime) and
+    req.court / req.booking_href (the pre-assigned first attempt).
+
+    Returns: list of BookingRequest with assignment fields set.
     """
     # --- Strategy A: group by event_id ---
     by_event = {}
@@ -96,31 +120,48 @@ def deduplicate_and_assign(requests, available_by_time):
         f"{len(deduplicated)} after match key"
     )
 
-    # --- Assign courts (sample without replacement) ---
+    # --- Pre-assign courts (sample without replacement across all requests) ---
     assigned = []
-    used_court_keys = set()  # (date, start_time, court)
+    used_court_keys = set()  # (date, time, court) — prevents double-assignment
 
     for req in deduplicated:
-        slots = get_courts_for_slot(available_by_time, req.start_time, req.duration)
+        # Compute ordered fallback times for this request
+        req.times_to_try = _fallback_times(req.start_time, available_by_time, req.duration)
 
-        chosen = None
-        for slot in slots:
-            key = (req.date, req.start_time, slot['court'])
-            if key not in used_court_keys:
-                chosen = slot
-                used_court_keys.add(key)
+        if not req.times_to_try:
+            logger.warning(
+                f"No courts available at any time for {req.user_id} "
+                f"vs {req.opponent} on {req.date} around {req.start_time}"
+            )
+            continue
+
+        # Pre-assign: pick the first free court at the first available time
+        chosen_slot = None
+        chosen_time = None
+        for t in req.times_to_try:
+            slots = get_courts_for_slot(available_by_time, t, req.duration)
+            for slot in slots:
+                key = (req.date, t, slot['court'])
+                if key not in used_court_keys:
+                    chosen_slot = slot
+                    chosen_time = t
+                    used_court_keys.add(key)
+                    break
+            if chosen_slot:
                 break
 
-        if chosen:
-            req.court = chosen['court']
-            req.booking_href = chosen['href']
-            assigned.append(req)
+        if chosen_slot:
+            req.court = chosen_slot['court']
+            req.booking_href = chosen_slot['href']
+            fallback_note = f" (fallback from {req.start_time})" if chosen_time != req.start_time else ""
             logger.info(
-                f"Assigned {chosen['court']} → {req.user_id} vs {req.opponent} at {req.start_time}"
+                f"Assigned {chosen_slot['court']} at {chosen_time}{fallback_note} "
+                f"→ {req.user_id} vs {req.opponent}"
             )
+            assigned.append(req)
         else:
             logger.warning(
-                f"No available court for {req.user_id} at {req.start_time} on {req.date}"
+                f"All courts already assigned for {req.user_id} at all candidate times"
             )
 
     return assigned

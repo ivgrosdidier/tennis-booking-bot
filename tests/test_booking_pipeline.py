@@ -1,57 +1,47 @@
+"""
+Quick sanity check for the two most foundational functions.
+For the full pipeline test, use integration_test.py instead.
+
+Usage:
+    python tests/test_booking_pipeline.py
+"""
+
+import sys
 import os
 from datetime import date, timedelta
-import logging
 
-# Import your existing logic
-from config import Config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from extensions import get_logger
 from booking.firestore_queries import get_eligible_users
-from booking.calendar_parser import get_calendar_events # Assuming you saved the function there
+from booking.calendar_parser import get_calendar_events
 
-# Setup basic logging to see the process in the terminal
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger('test_booking_pipeline')
 
-def run_integration_test():
-    """
-    1. Pulls all eligible users from Firestore.
-    2. Decrypts tokens and passwords.
-    3. Fetches Google Calendar events for the target booking date.
-    """
-    # Define the date we want to check (e.g., booking for 2 days from now)
-    target_date = date.today() + timedelta(days=2)
-    print(f"--- Starting Test for Booking Date: {target_date} ---")
 
-    # Step 1: Get users (this handles decryption and subcollections internally)
+def run():
+    target_date = date.today() + timedelta(days=6)
+    logger.info(f"Checking booking date: {target_date}")
+
     try:
-        eligible_users = get_eligible_users()
-        print(f"Found {len(eligible_users)} eligible users in Firestore.\n")
+        users = get_eligible_users()
+        logger.info(f"Found {len(users)} eligible user(s)")
     except Exception as e:
-        print(f"CRITICAL: Failed to fetch users from Firestore: {e}")
+        logger.error(f"get_eligible_users() failed: {e}")
         return
 
-    # Step 2: Loop through each user and check their calendar
-    for user in eligible_users:
-        print(f"Checking User: {user['user_id']} ({user.get('tennis_username', 'No Username')})")
-        print(f"Target Calendar ID: {user['google_cal_id']}")
+    for user in users:
+        uid = user['user_id']
+        logger.info(f"User {uid} | calendar: {user['google_cal_id']} | partners: {len(user.get('partners', {}))}")
 
-        # Step 3: Call the Calendar API using the user's decrypted refresh token
         events = get_calendar_events(user, target_date)
-
         if not events:
-            print(f"  [!] No events found for {user['user_id']} on {target_date}.")
+            logger.info(f"  No events on {target_date}")
         else:
-            print(f"  [✓] Found {len(events)} events:")
             for event in events:
                 start = event['start'].get('dateTime', event['start'].get('date'))
-                summary = event.get('summary', 'No Title')
-                print(f"      - {summary} starting at {start}")
-        
-        # Check if partners were pulled correctly
-        partner_count = len(user.get('partners', {}))
-        print(f"  [i] Partners synced: {partner_count}")
-        print("-" * 40)
+                logger.info(f"  Event: {event.get('summary', '(no title)')} at {start}")
 
-if __name__ == "__main__":
-    # Ensure your environment variables are set before running
-    # (e.g., GOOGLE_APPLICATION_CREDENTIALS, FERNET_KEY, etc.)
-    run_integration_test()
+
+if __name__ == '__main__':
+    run()

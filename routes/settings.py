@@ -32,6 +32,6 @@ def delete_account():
 
     except Exception as e:
         # Log this error using the logger we set up earlier!
-        print(f"[Account Deletion Error] {e}") 
+        logger.error(f"Account deletion failed for uid={uid}: {e}")
         flash('Something went wrong. Please try again.', 'error')
         return redirect(url_for('settings.settings'))

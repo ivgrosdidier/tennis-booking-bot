@@ -1,7 +1,6 @@
 import random
 import string
 from flask import Blueprint, request, redirect, url_for, flash
-from extensions import db
 from helpers.players import check_name_in_club_directory, partners_ref, check_duplicate_name, check_duplicate_nick
 from extensions import db, auth_required, get_current_uid, get_logger
 
